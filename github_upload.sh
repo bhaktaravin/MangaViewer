@@ -124,12 +124,14 @@ git push -u origin $DEV_BRANCH || error_exit "Failed to push to $DEV_BRANCH bran
 success_message "Successfully pushed to $DEV_BRANCH branch."
 
 # Create an empty main branch
-warning_message "Creating empty main branch..."
-git checkout --orphan main || error_exit "Failed to create main branch."
-git rm -rf . || warning_message "No files to remove from main branch."
+warning_message "Checking if main branch exists..."
+if ! git show-ref --verify --quiet refs/heads/main; then
+    warning_message "Creating empty main branch..."
+    git checkout --orphan main || error_exit "Failed to create main branch."
+    git rm -rf . || warning_message "No files to remove from main branch."
 
-# Create a README.md file for the main branch
-cat > README.md << EOL
+    # Create a README.md file for the main branch
+    cat > README.md << EOL
 # $REPO_NAME
 
 This is the main branch of the $REPO_NAME repository.
@@ -149,14 +151,17 @@ git checkout $DEV_BRANCH
 MangaView is a Laravel-based web application that combines user authentication with a personal manga reader. The project uses SQLite for database storage and Laravel Breeze for authentication.
 EOL
 
-# Commit the README to the main branch
-git add README.md || error_exit "Failed to add README.md to main branch."
-git commit -m "Add README.md to main branch" || error_exit "Failed to commit README.md to main branch."
+    # Commit the README to the main branch
+    git add README.md || error_exit "Failed to add README.md to main branch."
+    git commit -m "Add README.md to main branch" || error_exit "Failed to commit README.md to main branch."
 
-# Push the main branch
-warning_message "Pushing to main branch..."
-git push -u origin main || error_exit "Failed to push to main branch."
-success_message "Successfully pushed to main branch."
+    # Push the main branch
+    warning_message "Pushing to main branch..."
+    git push -u origin main || error_exit "Failed to push to main branch."
+    success_message "Successfully pushed to main branch."
+else
+    success_message "Main branch already exists. Skipping main branch creation."
+fi
 
 # Switch back to the development branch
 git checkout $DEV_BRANCH || error_exit "Failed to switch back to $DEV_BRANCH branch."
