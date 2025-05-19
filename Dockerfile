@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql zip
+    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql pdo_sqlite zip
 
 # Enable Apache modules
 RUN a2enmod rewrite
@@ -28,11 +28,22 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Create .env file from .env.example
 RUN cp .env.example .env
 
+# Configure database
+RUN sed -i "s/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/g" .env && \
+    sed -i "s/DB_DATABASE=laravel/DB_DATABASE=\/var\/www\/html\/database\/database.sqlite/g" .env
+
+# Create SQLite database
+RUN touch database/database.sqlite && \
+    chmod 666 database/database.sqlite
+
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
 # Generate application key
 RUN php artisan key:generate
+
+# Run migrations
+RUN php artisan migrate --force
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
