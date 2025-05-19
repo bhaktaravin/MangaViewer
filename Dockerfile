@@ -25,8 +25,14 @@ COPY . /var/www/html/
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Create .env file from .env.example
+RUN cp .env.example .env
+
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Generate application key
+RUN php artisan key:generate
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
@@ -34,9 +40,6 @@ RUN chown -R www-data:www-data /var/www/html \
 
 # Configure Apache
 RUN sed -i 's/DocumentRoot \/var\/www\/html/DocumentRoot \/var\/www\/html\/public/g' /etc/apache2/sites-available/000-default.conf
-
-# Generate application key
-RUN php artisan key:generate
 
 # Expose port 80
 EXPOSE 80
