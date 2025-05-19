@@ -8,7 +8,12 @@
 GITHUB_USERNAME="bhaktaravin"
 REPO_NAME="MangaViewer"
 DEV_BRANCH="development"
-COMMIT_MESSAGE="Initial commit"
+COMMIT_MESSAGE="Enhance MangaView with MyAnimeList integration:
+- Fix cover image display issues
+- Add automatic chapter fetching from MyAnimeList
+- Update manga metadata (description, author, status)
+- Add publication date information
+- Improve error handling and fallbacks"
 
 # Colors for output
 GREEN='\033[0;32m'
