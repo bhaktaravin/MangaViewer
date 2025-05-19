@@ -35,6 +35,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Create .env file from .env.example
 RUN cp .env.example .env
 
+RUN sed -i "s/APP_DEBUG=false/APP_DEBUG=true/g" .env
+
+
 # Configure database
 RUN sed -i "s/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/g" .env && \
     sed -i "s/DB_DATABASE=laravel/DB_DATABASE=\/var\/www\/html\/database\/database.sqlite/g" .env
@@ -43,6 +46,9 @@ RUN sed -i "s/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/g" .env && \
 RUN mkdir -p database
 RUN touch database/database.sqlite
 RUN chmod 666 database/database.sqlite
+
+RUN sed -i "s/SESSION_DRIVER=database/SESSION_DRIVER=file/g" .env
+
 
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
@@ -54,8 +60,10 @@ RUN php artisan key:generate
 RUN php artisan migrate --force
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage
+RUN chmod -R 775 /var/www/html/storage && \
+    chmod -R 775 /var/www/html/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/html
+
 
 # Configure Apache
 RUN sed -i 's/DocumentRoot \/var\/www\/html/DocumentRoot \/var\/www\/html\/public/g' /etc/apache2/sites-available/000-default.conf
