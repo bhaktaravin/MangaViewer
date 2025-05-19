@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -10,8 +10,15 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libzip-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql pdo_sqlite zip
+    libsqlite3-dev
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+RUN docker-php-ext-install gd
+RUN docker-php-ext-install pdo
+RUN docker-php-ext-install pdo_mysql
+RUN docker-php-ext-install pdo_sqlite
+RUN docker-php-ext-install zip
 
 # Enable Apache modules
 RUN a2enmod rewrite
@@ -33,8 +40,9 @@ RUN sed -i "s/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/g" .env && \
     sed -i "s/DB_DATABASE=laravel/DB_DATABASE=\/var\/www\/html\/database\/database.sqlite/g" .env
 
 # Create SQLite database
-RUN touch database/database.sqlite && \
-    chmod 666 database/database.sqlite
+RUN mkdir -p database
+RUN touch database/database.sqlite
+RUN chmod 666 database/database.sqlite
 
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
