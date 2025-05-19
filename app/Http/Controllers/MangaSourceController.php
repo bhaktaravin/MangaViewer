@@ -35,8 +35,13 @@ class MangaSourceController extends Controller
         ]);
 
         $results = $this->mangaSeeService->search($validated['query']);
-
-        return view('manga.sources.mangasee.results', compact('results'));
+        
+        // Debug output to console
+        $debugOutput = json_encode($results, JSON_PRETTY_PRINT);
+        \Log::info('MangaSee search results: ' . $debugOutput);
+        
+        return view('manga.sources.mangasee.results', compact('results'))
+            ->with('debugResults', $debugOutput);
     }
 
     /**
@@ -80,8 +85,13 @@ class MangaSourceController extends Controller
         ]);
 
         $results = $this->mangaLifeService->search($validated['query']);
-
-        return view('manga.sources.mangalife.results', compact('results'));
+        
+        // Debug output to console
+        $debugOutput = json_encode($results, JSON_PRETTY_PRINT);
+        \Log::info('MangaLife search results: ' . $debugOutput);
+        
+        return view('manga.sources.mangalife.results', compact('results'))
+            ->with('debugResults', $debugOutput);
     }
 
     /**

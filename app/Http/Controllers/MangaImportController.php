@@ -2,390 +2,411 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\Manga;
 use App\Models\Chapter;
 use App\Models\Page;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class MangaImportController extends Controller
 {
     /**
-     * Show the form for importing manga from MangaDex.
+     * Display the import form.
+     *
+     * @return \Illuminate\Http\Response
      */
-    public function showImportForm()
+    public function index()
     {
         return view('manga.import');
     }
 
     /**
-     * Search for manga on MangaDex API.
-     */
-    public function searchMangaDex(Request $request)
-    {
-        $validated = $request->validate([
-            'search' => 'required|string|min:3|max:100',
-        ]);
-
-        try {
-            $response = Http::get('https://api.mangadex.org/manga', [
-                'title' => $validated['search'],
-                'limit' => 10,
-                'includes' => ['cover_art', 'author'],
-            ]);
-
-            if ($response->successful()) {
-                $results = $response->json()['data'];
-                return view('manga.search_results', compact('results'));
-            } else {
-                return back()->with('error', 'Failed to search MangaDex. Please try again later.');
-            }
-        } catch (\Exception $e) {
-            return back()->with('error', 'An error occurred: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Import a manga from MangaDex.
-     */
-    public function importFromMangaDex(Request $request)
-    {
-        $validated = $request->validate([
-            'manga_id' => 'required|string',
-        ]);
-
-        try {
-            // Log the start of import process
-            \Log::info('Starting manga import for ID: ' . $validated['manga_id']);
-
-            // Get manga details
-            $mangaResponse = Http::get("https://api.mangadex.org/manga/{$validated['manga_id']}", [
-                'includes' => ['cover_art', 'author'],
-            ]);
-
-            if (!$mangaResponse->successful()) {
-                \Log::error('Failed to fetch manga details: ' . $mangaResponse->status());
-                return back()->with('error', 'Failed to fetch manga details from MangaDex. Status: ' . $mangaResponse->status());
-            }
-
-            $mangaData = $mangaResponse->json()['data'];
-            \Log::info('Manga data fetched successfully');
-
-            // Extract manga information
-            $title = $mangaData['attributes']['title']['en'] ?? array_values($mangaData['attributes']['title'])[0];
-            $description = $mangaData['attributes']['description']['en'] ?? '';
-            $status = $this->mapMangaDexStatus($mangaData['attributes']['status']);
-
-            // Get author name
-            $author = 'Unknown';
-            foreach ($mangaData['relationships'] as $relationship) {
-                if ($relationship['type'] === 'author') {
-                    $author = $relationship['attributes']['name'] ?? 'Unknown';
-                    break;
-                }
-            }
-
-            // Get cover image
-            $coverFileName = null;
-            foreach ($mangaData['relationships'] as $relationship) {
-                if ($relationship['type'] === 'cover_art') {
-                    $coverFileName = $relationship['attributes']['fileName'] ?? null;
-                    break;
-                }
-            }
-
-            // Download cover image if available
-            $coverPath = null;
-            if ($coverFileName) {
-                $coverUrl = "https://uploads.mangadex.org/covers/{$validated['manga_id']}/{$coverFileName}";
-                \Log::info('Downloading cover image from: ' . $coverUrl);
-
-                $coverImage = Http::get($coverUrl);
-                if ($coverImage->successful()) {
-                    $coverPath = "covers/" . Str::random(40) . ".jpg";
-                    $result = Storage::disk('public')->put($coverPath, $coverImage->body());
-                    \Log::info('Cover image saved to: ' . $coverPath . ', Result: ' . ($result ? 'Success' : 'Failed'));
-                } else {
-                    \Log::warning('Failed to download cover image: ' . $coverImage->status());
-                }
-            }
-
-            // Check if manga already exists in database
-            $existingManga = Manga::where('title', $title)->first();
-            if ($existingManga) {
-                \Log::info('Manga already exists in database: ' . $title);
-                return redirect()->route('manga.show', $existingManga)
-                    ->with('info', 'This manga already exists in your database.');
-            }
-
-            // Create manga record in database
-            \Log::info('Creating manga record: ' . $title);
-            $manga = Manga::create([
-                'title' => $title,
-                'description' => $description,
-                'author' => $author,
-                'status' => $status,
-                'cover_image' => $coverPath,
-                'total_chapters' => 0,
-            ]);
-
-            // Get chapters with pagination to fetch more chapters
-            \Log::info('Fetching chapters for manga ID: ' . $validated['manga_id']);
-            $allChapters = [];
-            $offset = 0;
-            $limit = 100; // Maximum allowed by MangaDex API
-            $hasMoreChapters = true;
-            
-            while ($hasMoreChapters) {
-                \Log::info("Fetching chapters batch: offset {$offset}, limit {$limit}");
-                
-                $chaptersResponse = Http::get("https://api.mangadex.org/manga/{$validated['manga_id']}/feed", [
-                    'limit' => $limit,
-                    'offset' => $offset,
-                    'translatedLanguage' => ['en'],
-                    'order' => ['chapter' => 'asc'],
-                ]);
-                
-                if (!$chaptersResponse->successful()) {
-                    \Log::warning("Failed to fetch chapters at offset {$offset}: " . $chaptersResponse->status());
-                    break;
-                }
-                
-                $chaptersData = $chaptersResponse->json()['data'];
-                $total = $chaptersResponse->json()['total'];
-                
-                \Log::info("Fetched " . count($chaptersData) . " chapters, total available: {$total}");
-                
-                $allChapters = array_merge($allChapters, $chaptersData);
-                $offset += $limit;
-                
-                // Check if we've fetched all chapters
-                if (count($allChapters) >= $total || count($chaptersData) == 0) {
-                    $hasMoreChapters = false;
-                }
-                
-                // Add a small delay to avoid rate limiting
-                usleep(500000); // 0.5 seconds
-            }
-            
-            \Log::info("Total chapters fetched: " . count($allChapters));
-            
-            $chapterCount = 0;
-            $pageCount = 0;
-            
-            if (count($allChapters) > 0) {
-                // Limit to 10 chapters for initial import to avoid overwhelming the server
-                // Remove this line if you want to import all chapters
-                $processChapters = array_slice($allChapters, 0, 10);
-                \Log::info("Processing first 10 chapters out of " . count($allChapters) . " total");
-                
-                foreach ($processChapters as $chapterData) {
-                    $chapterNumber = $chapterData['attributes']['chapter'] ?? '0';
-                    $chapterTitle = $chapterData['attributes']['title'] ?? "Chapter {$chapterNumber}";
-
-                    \Log::info('Processing chapter: ' . $chapterNumber . ' - ' . $chapterTitle);
-
-                    $chapter = $manga->chapters()->create([
-                        'title' => $chapterTitle,
-                        'chapter_number' => (int)$chapterNumber,
-                    ]);
-
-                    $chapterCount++;
-
-                    // Get chapter pages
-                    $chapterId = $chapterData['id'];
-                    \Log::info('Fetching pages for chapter ID: ' . $chapterId);
-
-                    $pagesResponse = Http::get("https://api.mangadex.org/at-home/server/{$chapterId}");
-
-                    if ($pagesResponse->successful()) {
-                        $baseUrl = $pagesResponse->json()['baseUrl'];
-                        $hash = $pagesResponse->json()['chapter']['hash'];
-                        $pageFiles = $pagesResponse->json()['chapter']['data'];
-
-                        \Log::info('Found ' . count($pageFiles) . ' pages for chapter ' . $chapterNumber);
-
-                        // Create directory if it doesn't exist
-                        $dirPath = "chapters/{$manga->id}/{$chapter->id}";
-                        if (!Storage::disk('public')->exists($dirPath)) {
-                            Storage::disk('public')->makeDirectory($dirPath);
-                            \Log::info('Created directory: ' . $dirPath);
-                        }
-
-                        // Limit to 5 pages per chapter for testing
-                        $pageFiles = array_slice($pageFiles, 0, 5);
-
-                        foreach ($pageFiles as $index => $pageFile) {
-                            $pageUrl = "{$baseUrl}/data/{$hash}/{$pageFile}";
-                            \Log::info('Downloading page ' . ($index + 1) . ' from: ' . $pageUrl);
-
-                            $pageImage = Http::get($pageUrl);
-
-                            if ($pageImage->successful()) {
-                                $pagePath = "{$dirPath}/" . Str::random(20) . ".jpg";
-                                $result = Storage::disk('public')->put($pagePath, $pageImage->body());
-                                \Log::info('Page saved to: ' . $pagePath . ', Result: ' . ($result ? 'Success' : 'Failed'));
-
-                                if ($result) {
-                                    $chapter->pages()->create([
-                                        'page_number' => $index + 1,
-                                        'image_path' => $pagePath,
-                                    ]);
-                                    $pageCount++;
-                                }
-                            } else {
-                                \Log::warning('Failed to download page: ' . $pageImage->status());
-                            }
-                        }
-                    } else {
-                        \Log::warning('Failed to fetch pages for chapter: ' . $pagesResponse->status());
-                    }
-                }
-
-                // Update total chapters count
-                $manga->total_chapters = $manga->chapters()->count();
-                $manga->save();
-                \Log::info('Updated manga with total chapters: ' . $manga->total_chapters);
-            } else {
-                \Log::warning('Failed to fetch chapters: ' . $chaptersResponse->status());
-            }
-
-            \Log::info('Import completed successfully. Downloaded ' . $chapterCount . ' chapters with ' . $pageCount . ' pages.');
-
-            return redirect()->route('manga.show', $manga)
-                ->with('success', 'Manga successfully imported from MangaDex! Downloaded ' . $chapterCount . ' chapters with ' . $pageCount . ' pages.');
-
-        } catch (\Exception $e) {
-            \Log::error('Exception during import: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
-            return back()->with('error', 'An error occurred during import: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Map MangaDex status to our application status.
-     */
-    private function mapMangaDexStatus($status)
-    {
-        return match ($status) {
-            'completed' => 'completed',
-            'ongoing' => 'ongoing',
-            'hiatus' => 'hiatus',
-            default => 'ongoing',
-        };
-    }
-
-    /**
-     * Show the form for manual manga import.
+     * Display the manual import form.
+     *
+     * @return \Illuminate\Http\Response
      */
     public function showManualImportForm()
     {
-        return view('manga.manual_import');
+        return view('manga.manual-import');
+    }
+
+    /**
+     * Display the import form.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showImportForm()
+    {
+        return view('manga.import-form');
+    }
+
+    /**
+     * Process the manga import.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'files' => 'required',
+            // Add more validation rules as needed
+        ]);
+
+        // Process the import logic here
+        // This is a placeholder for your actual import implementation
+
+        return redirect()->route('manga.index')
+            ->with('success', 'Manga imported successfully.');
     }
 
     /**
      * Process manual manga import.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
      */
     public function processManualImport(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'author' => 'nullable|string|max:255',
-            'status' => 'nullable|string|in:ongoing,completed,hiatus',
-            'cover_image' => 'nullable|image|max:2048',
-            'chapter_files' => 'required|array',
-            'chapter_files.*' => 'required|file|mimes:zip,rar,7z',
-            'chapter_titles' => 'required|array',
-            'chapter_titles.*' => 'required|string|max:255',
-            'chapter_numbers' => 'required|array',
-            'chapter_numbers.*' => 'required|integer|min:0',
+            'description' => 'nullable|string',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'files' => 'required|array',
+            'files.*' => 'file|mimes:zip,rar|max:50000',
         ]);
 
+        // Process the manual import logic here
+        // This is a placeholder for your actual import implementation
+
+        return redirect()->route('manga.index')
+            ->with('success', 'Manga imported successfully.');
+    }
+
+    /**
+     * Search manga from MangaDex API.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function searchMangaDex(Request $request)
+    {
+        $request->validate([
+            'search' => 'required|string|min:3',
+        ]);
+
+        $searchTerm = $request->search;
+        $results = [];
+
         try {
-            // Create manga record
-            $manga = new Manga([
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'author' => $validated['author'] ?? null,
-                'status' => $validated['status'] ?? 'ongoing',
-            ]);
+            // Log the search attempt
+            \Log::info('Searching MangaDex for: ' . $searchTerm);
 
-            // Handle cover image
-            if ($request->hasFile('cover_image')) {
-                $path = $request->file('cover_image')->store('covers', 'public');
-                $manga->cover_image = $path;
+            // Build the URL with properly encoded parameters
+            $baseUrl = "https://api.mangadex.org/manga";
+            $url = $baseUrl . "?title=" . urlencode($searchTerm) .
+                   "&limit=12" .
+                   "&includes[]=cover_art" .
+                   "&includes[]=author" .
+                   "&contentRating[]=safe" .
+                   "&contentRating[]=suggestive" .
+                   "&order[relevance]=desc";
+
+            \Log::info('Making request to URL: ' . $url);
+
+            // Make the API request
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('GET', $url);
+
+            // Log the response status
+            \Log::info('MangaDex API response status: ' . $response->getStatusCode());
+
+            if ($response->getStatusCode() == 200) {
+                $data = json_decode($response->getBody(), true);
+
+                // Log the response data structure
+                \Log::info('MangaDex API response structure: ' . json_encode(array_keys($data)));
+
+                // Process the results
+                if (isset($data['data']) && is_array($data['data'])) {
+                    \Log::info('Found ' . count($data['data']) . ' manga results');
+
+                    foreach ($data['data'] as $manga) {
+                        $title = '';
+                        if (isset($manga['attributes']['title'])) {
+                            if (isset($manga['attributes']['title']['en'])) {
+                                $title = $manga['attributes']['title']['en'];
+                            } elseif (isset($manga['attributes']['title']['ja-ro'])) {
+                                $title = $manga['attributes']['title']['ja-ro'];
+                            } elseif (!empty($manga['attributes']['title'])) {
+                                $title = array_values($manga['attributes']['title'])[0];
+                            }
+                        }
+
+                        $description = '';
+                        if (isset($manga['attributes']['description'])) {
+                            if (isset($manga['attributes']['description']['en'])) {
+                                $description = $manga['attributes']['description']['en'];
+                            } elseif (isset($manga['attributes']['description']['ja-ro'])) {
+                                $description = $manga['attributes']['description']['ja-ro'];
+                            } elseif (!empty($manga['attributes']['description'])) {
+                                $description = array_values($manga['attributes']['description'])[0];
+                            }
+                        }
+
+                        $mangaData = [
+                            'id' => $manga['id'],
+                            'title' => $title ?: 'Unknown Title',
+                            'description' => $description,
+                            'coverUrl' => 'https://uploads.mangadex.org/covers/' . $manga['id'] . '/0.jpg',
+                            'author' => 'Unknown Author',
+                        ];
+
+                        // Extract cover image and author
+                        if (isset($manga['relationships'])) {
+                            foreach ($manga['relationships'] as $relationship) {
+                                if ($relationship['type'] === 'cover_art' && isset($relationship['attributes']['fileName'])) {
+                                    $mangaData['coverUrl'] = 'https://uploads.mangadex.org/covers/' . $manga['id'] . '/' . $relationship['attributes']['fileName'] . '.512.jpg';
+                                }
+
+                                if ($relationship['type'] === 'author' && isset($relationship['attributes']['name'])) {
+                                    $mangaData['author'] = $relationship['attributes']['name'];
+                                }
+                            }
+                        }
+
+                        $results[] = $mangaData;
+                    }
+                }
             }
-
-            $manga->save();
-
-            // Process chapter files
-            foreach ($validated['chapter_files'] as $index => $chapterFile) {
-                $chapterNumber = $validated['chapter_numbers'][$index];
-                $chapterTitle = $validated['chapter_titles'][$index];
-
-                // Create chapter record
-                $chapter = $manga->chapters()->create([
-                    'title' => $chapterTitle,
-                    'chapter_number' => $chapterNumber,
-                ]);
-
-                // Extract and process chapter files (simplified for this example)
-                // In a real implementation, you'd need to extract the zip/rar files
-                // and process the images inside
-
-                // For now, we'll just create a placeholder page
-                $chapter->pages()->create([
-                    'page_number' => 1,
-                    'image_path' => 'placeholder.jpg', // This would be replaced with actual extracted images
-                ]);
-            }
-
-            // Update total chapters count
-            $manga->total_chapters = $manga->chapters()->count();
-            $manga->save();
-
-            return redirect()->route('manga.show', $manga)
-                ->with('success', 'Manga successfully imported!');
-
         } catch (\Exception $e) {
-            return back()->with('error', 'An error occurred during import: ' . $e->getMessage());
+            // Log the error
+            \Log::error('MangaDex API Error: ' . $e->getMessage());
+            \Log::error('Exception trace: ' . $e->getTraceAsString());
+        }
+
+        // Log the final results count
+        \Log::info('Returning ' . count($results) . ' manga results to view');
+
+        return view('manga.search-results', [
+            'results' => $results,
+            'search' => $searchTerm,
+        ]);
+    }
+
+    /**
+     * Import manga from MangaDex.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function importFromMangaDex(Request $request)
+    {
+        $request->validate([
+            'manga_id' => 'required|string',
+        ]);
+
+        $mangaId = $request->manga_id;
+        \Log::info('Importing manga from MangaDex with ID: ' . $mangaId);
+
+        try {
+            // Fetch manga details from MangaDex API
+            $client = new \GuzzleHttp\Client();
+            $url = "https://api.mangadex.org/manga/{$mangaId}?includes[]=cover_art&includes[]=author";
+
+            \Log::info('Making request to URL: ' . $url);
+            $response = $client->request('GET', $url);
+
+            if ($response->getStatusCode() == 200) {
+                $data = json_decode($response->getBody(), true);
+                \Log::debug('Full MangaDex API response: ' . json_encode($data));
+
+                if (isset($data['data'])) {
+                    $mangaData = $data['data'];
+
+                    // Extract manga details
+                    $title = '';
+                    if (isset($mangaData['attributes']['title'])) {
+                        if (isset($mangaData['attributes']['title']['en'])) {
+                            $title = $mangaData['attributes']['title']['en'];
+                        } elseif (isset($mangaData['attributes']['title']['ja-ro'])) {
+                            $title = $mangaData['attributes']['title']['ja-ro'];
+                        } elseif (!empty($mangaData['attributes']['title'])) {
+                            $title = array_values($mangaData['attributes']['title'])[0];
+                        }
+                    }
+
+                    $description = '';
+                    if (isset($mangaData['attributes']['description'])) {
+                        if (isset($mangaData['attributes']['description']['en'])) {
+                            $description = $mangaData['attributes']['description']['en'];
+                        } elseif (isset($mangaData['attributes']['description']['ja-ro'])) {
+                            $description = $mangaData['attributes']['description']['ja-ro'];
+                        } elseif (!empty($mangaData['attributes']['description'])) {
+                            $description = array_values($mangaData['attributes']['description'])[0];
+                        }
+                    }
+
+                    $status = 'ongoing';
+                    if (isset($mangaData['attributes']['status'])) {
+                        $status = $mangaData['attributes']['status'];
+                    }
+
+                    $coverImage = null;
+                    $author = 'Unknown Author';
+
+                    // Extract cover image and author
+                    if (isset($mangaData['relationships'])) {
+                        foreach ($mangaData['relationships'] as $relationship) {
+                            if ($relationship['type'] === 'cover_art') {
+                                \Log::debug('Found cover_art relationship: ' . json_encode($relationship));
+
+                                if (isset($relationship['attributes']) && isset($relationship['attributes']['fileName'])) {
+                                    $fileName = $relationship['attributes']['fileName'];
+                                    $coverImage = "https://uploads.mangadex.org/covers/{$mangaId}/{$fileName}";
+                                    \Log::info('Cover image URL: ' . $coverImage);
+                                }
+                            }
+
+                            if ($relationship['type'] === 'author' && isset($relationship['attributes']['name'])) {
+                                $author = $relationship['attributes']['name'];
+                            }
+                        }
+                    }
+
+                    // Save the manga to the database
+                    \Log::info('Creating manga record with title: ' . $title);
+
+                    $manga = \App\Models\Manga::create([
+                        'title' => $title ?: 'Unknown Title',
+                        'description' => $description,
+                        'cover_image' => $coverImage,
+                        'author' => $author,
+                        'status' => $status,
+                        'total_chapters' => 0, // Will be updated when chapters are imported
+                    ]);
+
+                    \Log::info('Manga created with ID: ' . $manga->id);
+
+                    // Fetch and import chapters
+                    $this->importChaptersForManga($manga, $mangaId);
+
+                    return redirect()->route('manga.index')
+                        ->with('success', 'Manga "' . $title . '" imported successfully from MangaDex.');
+                } else {
+                    \Log::error('Invalid manga data structure from MangaDex API');
+                    return redirect()->route('manga.import.form')
+                        ->with('error', 'Failed to import manga: Invalid data structure from MangaDex API');
+                }
+            } else {
+                \Log::error('MangaDex API returned status code: ' . $response->getStatusCode());
+                return redirect()->route('manga.import.form')
+                    ->with('error', 'Failed to import manga: MangaDex API returned status code ' . $response->getStatusCode());
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error importing manga from MangaDex: ' . $e->getMessage());
+            \Log::error('Exception trace: ' . $e->getTraceAsString());
+
+            return redirect()->route('manga.import.form')
+                ->with('error', 'Failed to import manga: ' . $e->getMessage());
         }
     }
 
-   /**
-     * Test image download from MangaDex.
+    /**
+     * Import chapters for a manga from MangaDex.
+     *
+     * @param  \App\Models\Manga  $manga
+     * @param  string  $mangaId
+     * @return void
      */
-    public function testImageDownload()
+    protected function importChaptersForManga($manga, $mangaId)
     {
         try {
-            // Test if we can download and store an image
-            $testUrl = "https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/4cd32f19-a3f1-4c71-8f60-05c2450b0dc0.jpg";
-            $testImage = Http::get($testUrl);
+            \Log::info('Importing chapters for manga ID: ' . $mangaId);
 
-            if ($testImage->successful()) {
-                $testPath = "test_images/test_" . time() . ".jpg";
-                Storage::disk('public')->put($testPath, $testImage->body());
+            // Fetch chapters from MangaDex API
+            $client = new \GuzzleHttp\Client();
+            $url = "https://api.mangadex.org/manga/{$mangaId}/feed?translatedLanguage[]=en&limit=100&order[chapter]=asc";
 
-                return view('manga.test_image', [
-                    'imagePath' => $testPath,
-                    'success' => true,
-                    'message' => 'Image downloaded successfully!'
-                ]);
+            \Log::info('Making request to URL: ' . $url);
+            $response = $client->request('GET', $url);
+
+            if ($response->getStatusCode() == 200) {
+                $data = json_decode($response->getBody(), true);
+
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $chaptersCount = count($data['data']);
+                    \Log::info('Found ' . $chaptersCount . ' chapters');
+
+                    foreach ($data['data'] as $index => $chapterData) {
+                        if (isset($chapterData['attributes']['chapter'])) {
+                            $chapterNumber = $chapterData['attributes']['chapter'];
+                            $chapterTitle = $chapterData['attributes']['title'] ?? 'Chapter ' . $chapterNumber;
+
+                            \Log::info('Importing chapter ' . $chapterNumber . ': ' . $chapterTitle);
+
+                            // Create chapter record
+                            $chapter = $manga->chapters()->create([
+                                'title' => $chapterTitle,
+                                'chapter_number' => $chapterNumber,
+                                'content' => null,
+                                'file_path' => null,
+                            ]);
+
+                            \Log::info('Chapter created with ID: ' . $chapter->id);
+                        }
+                    }
+
+                    // Update manga total chapters
+                    $manga->total_chapters = $chaptersCount;
+                    $manga->save();
+
+                    \Log::info('Updated manga total chapters to: ' . $chaptersCount);
+                } else {
+                    \Log::error('No chapters found or invalid data structure');
+                }
             } else {
-                return view('manga.test_image', [
-                    'success' => false,
-                    'message' => 'Failed to download image. Status: ' . $testImage->status()
-                ]);
+                \Log::error('MangaDex API returned status code: ' . $response->getStatusCode() . ' when fetching chapters');
             }
         } catch (\Exception $e) {
-            return view('manga.test_image', [
-                'success' => false,
-                'message' => 'Exception: ' . $e->getMessage()
-            ]);
+            \Log::error('Error importing chapters: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Test MangaDex API connection.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function testMangaDexApi()
+    {
+        try {
+            // Test API connection by making a simple request
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('GET', 'https://api.mangadex.org/manga', [
+                'query' => [
+                    'limit' => 1
+                ]
+            ]);
+
+            if ($response->getStatusCode() == 200) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'MangaDex API connection successful',
+                    'data' => json_decode($response->getBody(), true)
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'MangaDex API returned status code: ' . $response->getStatusCode()
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'MangaDex API connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

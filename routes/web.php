@@ -31,7 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/manga/import', [App\Http\Controllers\MangaImportController::class, 'importFromMangaDex'])->name('manga.import');
     Route::get('/manga/manual-import', [App\Http\Controllers\MangaImportController::class, 'showManualImportForm'])->name('manga.manual.import');
     Route::post('/manga/manual-import', [App\Http\Controllers\MangaImportController::class, 'processManualImport'])->name('manga.manual.process');
-    Route::get('/manga/test-image', [App\Http\Controllers\MangaImportController::class, 'testImageDownload'])->name('manga.test.image');
+    Route::get('/manga/test-api', [App\Http\Controllers\MangaImportController::class, 'testMangaDexApi'])->name('manga.test.api');
     
     // Jikan API import routes
     Route::get('/manga/jikan-import', [App\Http\Controllers\JikanImportController::class, 'showImportForm'])->name('manga.jikan.form');
@@ -52,6 +52,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['auth'])->group(function () {
         // Manga resource routes
         Route::resource('manga', MangaController::class);
+        
+        // MyAnimeList cover image routes
+        Route::post('/manga/search-cover', [MangaController::class, 'searchCover'])->name('manga.search.cover');
+        Route::post('/manga/{manga}/fetch-cover', [MangaController::class, 'fetchCover'])->name('manga.fetch.cover');
+        Route::post('/manga/{manga}/fetch-chapters', [MangaController::class, 'fetchChapters'])->name('manga.fetch.chapters');
         
         // Nested routes for chapters
         Route::resource('manga.chapters', ChapterController::class);

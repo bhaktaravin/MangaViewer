@@ -71,9 +71,55 @@ class MangaSeeService
                 \Log::info('Trying alternative selector for MangaSee search');
                 
                 // Debug the HTML structure
+                \Log::info('MangaSee search URL: ' . $this->baseUrl . '/search/?name=' . urlencode($query));
                 \Log::debug('MangaSee HTML structure: ' . substr($html, 0, 1000) . '...');
                 
-                // Return some dummy data for testing
+                // Try to extract data from JavaScript
+                preg_match('/vm\.Directory\s*=\s*(\[.*?\]);/s', $html, $directoryMatches);
+                if (!empty($directoryMatches)) {
+                    \Log::info('Found Directory data in JavaScript');
+                    $directoryJson = $directoryMatches[1];
+                    try {
+                        $directory = json_decode($directoryJson, true);
+                        \Log::info('Successfully parsed Directory JSON: ' . count($directory) . ' items found');
+                        
+                        // Filter directory based on search query
+                        $filteredResults = array_filter($directory, function($item) use ($query) {
+                            return stripos($item['s'] ?? '', $query) !== false;
+                        });
+                        
+                        \Log::info('Filtered results: ' . count($filteredResults) . ' items');
+                        
+                        // Format results
+                        foreach ($filteredResults as $item) {
+                            $title = $item['s'] ?? 'Unknown';
+                            $slug = $item['i'] ?? '';
+                            
+                            // Generate cover URL based on slug
+                            $coverUrl = "https://temp.compsci88.com/cover/{$slug}.jpg";
+                            
+                            $results[] = [
+                                'title' => $title,
+                                'slug' => $slug,
+                                'cover' => $coverUrl,
+                                'author' => $item['a'] ?? 'Unknown',
+                                'status' => isset($item['ss']) ? ($item['ss'] == 'Completed' ? 'completed' : 'ongoing') : 'ongoing'
+                            ];
+                        }
+                        
+                        \Log::info('Formatted ' . count($results) . ' results');
+                    } catch (\Exception $e) {
+                        \Log::error('Error parsing Directory JSON: ' . $e->getMessage());
+                    }
+                } else {
+                    \Log::warning('Could not find Directory data in JavaScript');
+                }
+                
+                // If still no results, return dummy data
+                if (empty($results)) {
+                    \Log::info('No results found, returning dummy data for testing');
+                    
+                    // Return some dummy data for testing
                 $results = [
                     [
                         'title' => 'One Piece',

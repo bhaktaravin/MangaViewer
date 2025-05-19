@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
+  <rect width="200" height="300" fill="#f3f4f6" />
+  <text x="100" y="150" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#6b7280">No Cover Available</text>
+  <rect x="40" y="170" width="120" height="5" fill="#d1d5db" />
+  <rect x="60" y="185" width="80" height="5" fill="#d1d5db" />
+  <rect x="70" y="200" width="60" height="5" fill="#d1d5db" />
+</svg>

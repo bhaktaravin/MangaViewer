@@ -51,14 +51,29 @@
                                     
                                     @if($manga->cover_image)
                                         <div class="mt-2 mb-2">
-                                            <img src="{{ asset('storage/' . $manga->cover_image) }}" alt="{{ $manga->title }}" class="w-32 h-auto">
-                                            <p class="text-sm text-gray-500 mt-1">Current cover image</p>
+                                            <img src="{{ $manga->cover_image_url }}" alt="{{ $manga->title }}" class="w-32 h-auto" onerror="this.onerror=null; this.src='{{ asset('images/no-cover.svg') }}'; this.alt='No Cover Available';">
+                                            <div class="flex space-x-2 mt-2">
+                                                <form method="POST" action="{{ route('manga.fetch.cover', $manga) }}" class="inline">
+                                                    @csrf
+                                                    <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 underline">
+                                                        Get cover from MyAnimeList
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
                                     @endif
                                     
                                     <input id="cover_image" type="file" name="cover_image" class="block mt-1 w-full" accept="image/*">
                                     <p class="text-sm text-gray-500 mt-1">Leave empty to keep current image</p>
                                     <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
+                                </div>
+                                
+                                <!-- Cover Image URL -->
+                                <div class="mb-4">
+                                    <x-input-label for="cover_image_url" :value="__('Or Cover Image URL')" />
+                                    <x-text-input id="cover_image_url" class="block mt-1 w-full" type="url" name="cover_image_url" :value="old('cover_image_url')" placeholder="https://example.com/image.jpg" />
+                                    <p class="text-sm text-gray-500 mt-1">Enter a direct URL to an image</p>
+                                    <x-input-error :messages="$errors->get('cover_image_url')" class="mt-2" />
                                 </div>
                             </div>
 

@@ -51,6 +51,14 @@
                                     <p class="text-sm text-gray-500 mt-1">Recommended size: 400x600 pixels</p>
                                     <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
                                 </div>
+                                
+                                <!-- Cover Image URL -->
+                                <div class="mb-4">
+                                    <x-input-label for="cover_image_url" :value="__('Or Cover Image URL')" />
+                                    <x-text-input id="cover_image_url" class="block mt-1 w-full" type="url" name="cover_image_url" :value="old('cover_image_url')" placeholder="https://example.com/image.jpg" />
+                                    <p class="text-sm text-gray-500 mt-1">Enter a direct URL to an image</p>
+                                    <x-input-error :messages="$errors->get('cover_image_url')" class="mt-2" />
+                                </div>
                             </div>
 
                             <div>

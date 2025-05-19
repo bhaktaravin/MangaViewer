@@ -24,28 +24,57 @@
                     <div class="flex flex-col md:flex-row">
                         <div class="md:w-1/4 mb-4 md:mb-0 md:mr-6">
                             @if ($manga->cover_image)
-                                <img src="{{ asset('storage/' . $manga->cover_image) }}" alt="{{ $manga->title }}" class="w-full rounded-lg shadow-md">
+                                <img src="{{ $manga->cover_image_url }}" alt="{{ $manga->title }}" class="w-full max-h-48 object-contain mx-auto rounded-lg shadow-md" onerror="this.onerror=null; this.src='{{ asset('images/no-cover.svg') }}'; this.alt='No Cover Available';">
+                                
+                                @auth
+                                <div class="mt-2">
+                                    <form method="POST" action="{{ route('manga.fetch.cover', $manga) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-blue-600 hover:text-blue-800">
+                                            Get cover from MyAnimeList
+                                        </button>
+                                    </form>
+                                </div>
+                                @endauth
                             @else
-                                <div class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                                <div class="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
                                     <span class="text-gray-500">No Cover</span>
                                 </div>
+                                
+                                @auth
+                                <div class="mt-2">
+                                    <form method="POST" action="{{ route('manga.fetch.cover', $manga) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-blue-600 hover:text-blue-800">
+                                            Get cover from MyAnimeList
+                                        </button>
+                                    </form>
+                                </div>
+                                @endauth
                             @endif
                             
-                            @auth
-                            <div class="mt-4 flex flex-col space-y-2">
-                                <a href="{{ route('manga.edit', $manga) }}" class="inline-flex items-center justify-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                    {{ __('Edit Manga') }}
-                                </a>
-                                
-                                <form method="POST" action="{{ route('manga.destroy', $manga) }}" class="w-full">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 focus:bg-red-500 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150" onclick="return confirm('Are you sure you want to delete this manga?')">
-                                        {{ __('Delete Manga') }}
-                                    </button>
-                                </form>
-                            </div>
-                            @endauth
+                                @auth
+                                <div class="mt-4 flex flex-col space-y-2">
+                                    <a href="{{ route('manga.edit', $manga) }}" class="inline-flex items-center justify-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                        {{ __('Edit Manga') }}
+                                    </a>
+                                    
+                                    <form method="POST" action="{{ route('manga.fetch.chapters', $manga) }}" class="w-full">
+                                        @csrf
+                                        <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 focus:bg-green-500 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                            {{ __('Auto-Import Chapters') }}
+                                        </button>
+                                    </form>
+                                    
+                                    <form method="POST" action="{{ route('manga.destroy', $manga) }}" class="w-full">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 focus:bg-red-500 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150" onclick="return confirm('Are you sure you want to delete this manga?')">
+                                            {{ __('Delete Manga') }}
+                                        </button>
+                                    </form>
+                                </div>
+                                @endauth
                         </div>
                         
                         <div class="md:w-3/4">
@@ -65,6 +94,15 @@
                                 <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
                                     {{ $manga->total_chapters }} {{ Str::plural('Chapter', $manga->total_chapters) }}
                                 </span>
+                                
+                                @if ($manga->published_from)
+                                <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
+                                    Published: {{ $manga->published_from->format('M d, Y') }}
+                                    @if ($manga->published_to)
+                                        to {{ $manga->published_to->format('M d, Y') }}
+                                    @endif
+                                </span>
+                                @endif
                             </div>
                             
                             @if ($manga->description)
