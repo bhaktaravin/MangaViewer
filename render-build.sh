@@ -2,15 +2,18 @@
 # Exit on error
 set -o errexit
 
+# Install Composer dependencies
+composer install --optimize-autoloader --no-dev
+
+# Install NPM dependencies and build assets
 npm ci
 npm run build
-composer install --optimize-autoloader --no-dev
+
+# Laravel optimization
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
 # Create SQLite database if using SQLite
-if [ "$DB_CONNECTION" = "sqlite" ]; then
-    touch database/database.sqlite
-    php artisan migrate --force
-fi
+touch database/database.sqlite
+php artisan migrate --force

@@ -8,7 +8,7 @@
 GITHUB_USERNAME="bhaktaravin"
 REPO_NAME="MangaViewer"
 DEV_BRANCH="development"
-COMMIT_MESSAGE="Updated PHP Artisan Routes"
+COMMIT_MESSAGE="Updated PHP Artisan for Render.com"
 
 # Colors for output
 GREEN='\033[0;32m'
