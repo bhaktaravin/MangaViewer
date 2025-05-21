@@ -2,78 +2,69 @@ FROM php:8.2-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    zip \
-    unzip \
     git \
     curl \
-    libzip-dev \
-    libsqlite3-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
     nodejs \
     npm
 
-# Install Node.js and npm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install gd
-RUN docker-php-ext-install pdo
-RUN docker-php-ext-install pdo_mysql
-RUN docker-php-ext-install pdo_sqlite
-RUN docker-php-ext-install zip
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Enable Apache modules
-RUN a2enmod rewrite
+# Get latest Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
-COPY . /var/www/html/
+# Copy existing application directory contents
+COPY . /var/www/html
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Create .env file from .env.example
-RUN cp .env.example .env
-
-RUN sed -i "s/APP_DEBUG=false/APP_DEBUG=true/g" .env
-
-# Configure database
-RUN sed -i "s/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/g" .env && \
-    sed -i "s/DB_DATABASE=laravel/DB_DATABASE=\/var\/www\/html\/database\/database.sqlite/g" .env
-
-# Create SQLite database
-RUN mkdir -p database
-RUN touch database/database.sqlite
-RUN chmod 666 database/database.sqlite
-
-RUN sed -i "s/SESSION_DRIVER=database/SESSION_DRIVER=file/g" .env
-
-# Install PHP dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
-
-# Install Node.js dependencies and build assets
-RUN npm install
-RUN npm run build
-
-# Generate application key
-RUN php artisan key:generate
-
-# Run migrations
-RUN php artisan migrate --force
+# Copy .env.example to .env if .env doesn't exist
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # Set permissions
-RUN chmod -R 775 /var/www/html/storage && \
-    chmod -R 775 /var/www/html/bootstrap/cache && \
-    chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html
+
+# Create a custom bootstrap file to fix the env() issue
+RUN echo "<?php \
+if (!function_exists('env')) { \
+    function env(\$key, \$default = null) { \
+        return \$default; \
+    } \
+}" > /var/www/html/bootstrap/env_helper.php
+
+# Modify composer.json to include our helper before autoloading
+RUN sed -i 's/"autoload": {/"autoload": { "files": ["bootstrap\/env_helper.php"],/g' composer.json
+
+# Install Composer dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+# Install Node.js dependencies and build assets
+RUN npm ci && npm run build
 
 # Configure Apache
-RUN sed -i 's/DocumentRoot \/var\/www\/html/DocumentRoot \/var\/www\/html\/public/g' /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite
+COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+
+# Generate application key
+RUN php artisan key:generate --force
+
+# Cache configuration
+RUN php artisan config:cache
+RUN php artisan route:cache
+RUN php artisan view:cache
+
+# Create SQLite database if using SQLite
+RUN touch database/database.sqlite
+RUN php artisan migrate --force
 
 # Expose port 80
 EXPOSE 80
