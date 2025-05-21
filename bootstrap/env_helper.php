@@ -1,16 +1,19 @@
 <?php
 /**
- * Helper file to prevent "Class 'env' does not exist" error during package discovery
+ * Helper file to provide env() function for Laravel
  */
 
-// Define the env function if it doesn't exist
 if (!function_exists('env')) {
-    function env($key, $default = null) {
+    /**
+     * Gets the value of an environment variable.
+     *
+     * @param  string  $key
+     * @param  mixed  $default
+     * @return mixed
+     */
+    function env($key, $default = null)
+    {
+        // In the helper, just return the default value
         return $default;
     }
-}
-
-// Define the env class if it doesn't exist
-if (!class_exists('env')) {
-    class env {}
 }

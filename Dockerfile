@@ -28,36 +28,37 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy bootstrap directory first with env helper
-COPY bootstrap/env_helper.php bootstrap/env_helper.php
+# Copy existing application directory contents
+COPY . /var/www/html
 
-# Copy composer files
-COPY composer.json composer.lock* ./
-
-# Install Composer dependencies without scripts and autoloader
-RUN COMPOSER_MEMORY_LIMIT=-1 COMPOSER_DISABLE_XDEBUG_WARN=1 composer install --no-interaction --prefer-dist --no-dev --no-scripts --no-autoloader
-
-# Copy the rest of the application
-COPY . .
-
-# Generate autoloader
-RUN COMPOSER_MEMORY_LIMIT=-1 composer dump-autoload --optimize
-
-# Run package discovery separately
-RUN php -d memory_limit=-1 artisan package:discover --ansi || true
-
-# Configure Apache
-RUN a2enmod rewrite
-COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+# Create a simple .env file with basic settings
+RUN echo "APP_NAME=MangaView\n\
+APP_ENV=production\n\
+APP_KEY=base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\
+APP_DEBUG=true\n\
+APP_URL=http://localhost\n\
+DB_CONNECTION=sqlite\n\
+CACHE_DRIVER=file\n\
+QUEUE_CONNECTION=sync\n\
+SESSION_DRIVER=file\n\
+SESSION_LIFETIME=120" > .env
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Install Composer dependencies with --no-scripts to avoid package discovery
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-scripts
+
+# Run package discovery manually after all dependencies are installed
+RUN php -r "class env { public function __toString() { return ''; } } function env(\$key, \$default = null) { return \$default; }" && \
+    php artisan package:discover --ansi
+
 # Install Node.js dependencies and build assets
 RUN npm ci && npm run build
 
-# Copy .env.example to .env if .env doesn't exist
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
+# Configure Apache
+RUN a2enmod rewrite
+COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
 # Generate application key
 RUN php artisan key:generate --force
