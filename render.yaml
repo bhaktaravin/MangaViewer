@@ -3,11 +3,12 @@ services:
     name: mangaview
     env: docker
     dockerfilePath: ./Dockerfile
+    plan: free
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: false
+        value: true
       - key: APP_URL
         fromService:
           type: web

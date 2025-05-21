@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    libzip-dev \
     zip \
     unzip \
     nodejs \
@@ -16,7 +17,10 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Configure PHP
+RUN echo "memory_limit=2G" > /usr/local/etc/php/conf.d/memory-limit.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -24,35 +28,34 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory contents
-COPY . /var/www/html
+# Copy composer files first for better caching
+COPY composer.json composer.lock* ./
 
-# Copy .env.example to .env if .env doesn't exist
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
+# Create the env helper file before running composer
+RUN mkdir -p bootstrap
+RUN echo "<?php if (!function_exists('env')) { function env(\$key, \$default = null) { return \$default; } }" > bootstrap/env_helper.php
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html
+# Install Composer dependencies without scripts and autoloader
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-scripts --no-autoloader --no-dev
 
-# Create a custom bootstrap file to fix the env() issue
-RUN echo "<?php \
-if (!function_exists('env')) { \
-    function env(\$key, \$default = null) { \
-        return \$default; \
-    } \
-}" > /var/www/html/bootstrap/env_helper.php
+# Copy the rest of the application
+COPY . .
 
-# Modify composer.json to include our helper before autoloading
-RUN sed -i 's/"autoload": {/"autoload": { "files": ["bootstrap\/env_helper.php"],/g' composer.json
-
-# Install Composer dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-
-# Install Node.js dependencies and build assets
-RUN npm ci && npm run build
+# Generate autoloader and run scripts
+RUN COMPOSER_MEMORY_LIMIT=-1 composer dump-autoload --optimize
 
 # Configure Apache
 RUN a2enmod rewrite
 COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Install Node.js dependencies and build assets
+RUN npm ci && npm run build
+
+# Copy .env.example to .env if .env doesn't exist
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # Generate application key
 RUN php artisan key:generate --force
@@ -63,7 +66,9 @@ RUN php artisan route:cache
 RUN php artisan view:cache
 
 # Create SQLite database if using SQLite
+RUN mkdir -p database
 RUN touch database/database.sqlite
+RUN chown -R www-data:www-data database
 RUN php artisan migrate --force
 
 # Expose port 80
