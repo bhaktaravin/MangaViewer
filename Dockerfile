@@ -28,21 +28,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for better caching
+# Copy bootstrap directory first with env helper
+COPY bootstrap/env_helper.php bootstrap/env_helper.php
+
+# Copy composer files
 COPY composer.json composer.lock* ./
 
-# Create the env helper file before running composer
-RUN mkdir -p bootstrap
-RUN echo "<?php if (!function_exists('env')) { function env(\$key, \$default = null) { return \$default; } }" > bootstrap/env_helper.php
-
 # Install Composer dependencies without scripts and autoloader
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-scripts --no-autoloader --no-dev
+RUN COMPOSER_MEMORY_LIMIT=-1 COMPOSER_DISABLE_XDEBUG_WARN=1 composer install --no-interaction --prefer-dist --no-dev --no-scripts --no-autoloader
 
 # Copy the rest of the application
 COPY . .
 
-# Generate autoloader and run scripts
+# Generate autoloader
 RUN COMPOSER_MEMORY_LIMIT=-1 composer dump-autoload --optimize
+
+# Run package discovery separately
+RUN php -d memory_limit=-1 artisan package:discover --ansi || true
 
 # Configure Apache
 RUN a2enmod rewrite

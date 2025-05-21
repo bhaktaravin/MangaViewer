@@ -26,3 +26,7 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: debug
+      - key: COMPOSER_DISABLE_XDEBUG_WARN
+        value: "1"
+      - key: COMPOSER_MEMORY_LIMIT
+        value: "-1"
