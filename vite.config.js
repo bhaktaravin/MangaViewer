@@ -8,4 +8,14 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    build: {
+        // Generate manifest.json in outDir
+        manifest: true,
+        rollupOptions: {
+            // Ensure proper output format
+            output: {
+                manualChunks: undefined
+            }
+        }
+    }
 });
