@@ -11,13 +11,13 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Tailwind CSS CDN (Fallback for production) -->
-        @if(app()->environment('production'))
+        <!-- Tailwind CSS CDN for production -->
         <script src="https://cdn.tailwindcss.com"></script>
-        @endif
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <!-- Scripts - Only include Vite in local environment -->
+        @if(app()->environment('local'))
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @endif
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">

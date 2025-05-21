@@ -9,12 +9,19 @@ composer install --optimize-autoloader --no-dev
 npm ci
 npm run build
 
-# Ensure the build directory exists and is writable
-mkdir -p public/build
-chmod -R 755 public/build
+# Debug: List build directory contents
+echo "Contents of public/build directory:"
+ls -la public/build
 
-# Copy the built assets to the public directory
-cp -R public/build/assets/* public/build/
+# Ensure manifest.json exists
+if [ ! -f "public/build/manifest.json" ]; then
+    echo "Error: manifest.json not found!"
+    # Copy it from the expected location if it exists elsewhere
+    if [ -f "public/build/assets/manifest.json" ]; then
+        echo "Found manifest.json in assets directory, copying..."
+        cp public/build/assets/manifest.json public/build/
+    fi
+fi
 
 # Laravel optimization
 php artisan config:cache
