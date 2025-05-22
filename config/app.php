@@ -184,6 +184,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\EnvServiceProvider::class,
+        App\Providers\ViteFallbackServiceProvider::class,
 
     ],
 

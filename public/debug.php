@@ -104,11 +104,13 @@ try {
         
         // Check tables if connection is successful
         try {
-            $tables = $connection->getDoctrineSchemaManager()->listTableNames();
+            // Use the schema builder instead of getDoctrineSchemaManager in Laravel 12
+            $schema = $app['db']->connection()->getSchemaBuilder();
+            $tables = $schema->getTables();
             output("Database Tables", $tables);
             
             // 6. Check users table if it exists
-            if (in_array('users', $tables)) {
+            if (in_array('users', array_column($tables, 'name'))) {
                 $usersCount = $app['db']->table('users')->count();
                 output("Users Table", "Found {$usersCount} users in the database");
                 
@@ -232,20 +234,20 @@ try {
         $usingCDN = false;
         if (file_exists($appBladePath)) {
             $appBladeContent = file_get_contents($appBladePath);
-            if (strpos($appBladeContent, 'cdn.tailwindcss.com') !== false) {
+            if (strpos($appBladeContent, 'cdn.tailwindcss.com') !== false || strpos($appBladeContent, '@viteAssets') !== false) {
                 $usingCDN = true;
             }
         }
         
         if (file_exists($guestBladePath)) {
             $guestBladeContent = file_get_contents($guestBladePath);
-            if (strpos($guestBladeContent, 'cdn.tailwindcss.com') !== false) {
+            if (strpos($guestBladeContent, 'cdn.tailwindcss.com') !== false || strpos($guestBladeContent, '@viteAssets') !== false) {
                 $usingCDN = true;
             }
         }
         
         if ($usingCDN) {
-            output("CSS Fallback", "Using Tailwind CSS CDN as fallback");
+            output("CSS Fallback", "Using Tailwind CSS CDN as fallback via @viteAssets directive");
         } else {
             output("CSS Fallback", "No fallback detected for missing Vite manifest", true);
         }
