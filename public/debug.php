@@ -85,25 +85,77 @@ try {
     
     // 5. Check database connection
     try {
-        $db = $app->make('db');
-        $connection = $db->connection();
-        $tables = $connection->getDoctrineSchemaManager()->listTableNames();
-        output("Database Connection", "Successfully connected to the database");
-        output("Database Tables", $tables);
+        // Import the DB facade explicitly
+        use_facade('DB', 'Illuminate\Support\Facades\DB');
         
-        // 6. Check users table if it exists
-        if (in_array('users', $tables)) {
-            $usersCount = $db->table('users')->count();
-            output("Users Table", "Found {$usersCount} users in the database");
+        $connection = \Illuminate\Support\Facades\DB::connection();
+        $driver = $connection->getDriverName();
+        output("Database Connection", "Successfully connected to the database using driver: " . $driver);
+        
+        // Get database configuration
+        $config = $connection->getConfig();
+        $safeConfig = $config;
+        if (isset($safeConfig['password'])) {
+            $safeConfig['password'] = '[MASKED]';
+        }
+        output("Database Configuration", $safeConfig);
+        
+        // Check tables if connection is successful
+        try {
+            $tables = $connection->getDoctrineSchemaManager()->listTableNames();
+            output("Database Tables", $tables);
             
-            // Get first user (without sensitive info)
-            if ($usersCount > 0) {
-                $firstUser = $db->table('users')->select('id', 'name', 'email', 'created_at')->first();
-                output("First User", $firstUser);
+            // 6. Check users table if it exists
+            if (in_array('users', $tables)) {
+                $usersCount = \Illuminate\Support\Facades\DB::table('users')->count();
+                output("Users Table", "Found {$usersCount} users in the database");
+                
+                // Get first user (without sensitive info)
+                if ($usersCount > 0) {
+                    $firstUser = \Illuminate\Support\Facades\DB::table('users')->select('id', 'name', 'email', 'created_at')->first();
+                    output("First User", $firstUser);
+                }
             }
+        } catch (Exception $e) {
+            output("Database Schema Error", "Failed to list tables: " . $e->getMessage(), true);
         }
     } catch (Exception $e) {
         output("Database Error", "Failed to connect to the database: " . $e->getMessage(), true);
+        
+        // Check if SQLite file exists (if using SQLite)
+        $dbConnection = $app['config']->get('database.default');
+        if ($dbConnection === 'sqlite') {
+            $dbPath = $app['config']->get('database.connections.sqlite.database');
+            if ($dbPath !== ':memory:') {
+                $fullPath = realpath($dbPath) ?: $dbPath;
+                if (file_exists($fullPath)) {
+                    output("SQLite Database", "File exists at: {$fullPath}");
+                    output("SQLite Permissions", "File permissions: " . substr(sprintf('%o', fileperms($fullPath)), -4));
+                    output("SQLite Size", "File size: " . filesize($fullPath) . " bytes");
+                } else {
+                    output("SQLite Database", "File does not exist at: {$fullPath}", true);
+                    
+                    // Try to create the SQLite file
+                    try {
+                        $directory = dirname($fullPath);
+                        if (!is_dir($directory)) {
+                            mkdir($directory, 0755, true);
+                            output("SQLite Directory", "Created directory: {$directory}");
+                        }
+                        
+                        if (touch($fullPath)) {
+                            output("SQLite Database", "Created empty database file at: {$fullPath}");
+                        } else {
+                            output("SQLite Database", "Failed to create database file at: {$fullPath}", true);
+                        }
+                    } catch (Exception $e) {
+                        output("SQLite Creation Error", $e->getMessage(), true);
+                    }
+                }
+            } else {
+                output("SQLite Database", "Using in-memory database");
+            }
+        }
     }
     
     // 7. Check view files that might be causing issues
@@ -161,8 +213,51 @@ try {
         output("Middleware Error", $e->getMessage(), true);
     }
     
+    // 10. Check for Vite manifest
+    $viteManifestPath = public_path('build/manifest.json');
+    if (file_exists($viteManifestPath)) {
+        $manifestContent = file_get_contents($viteManifestPath);
+        $manifest = json_decode($manifestContent, true);
+        output("Vite Manifest", "Found at: {$viteManifestPath}");
+        output("Manifest Content", $manifest);
+    } else {
+        output("Vite Manifest", "Not found at: {$viteManifestPath}", true);
+        
+        // Check if we're using CDN fallback
+        $appBladePath = resource_path('views/layouts/app.blade.php');
+        $guestBladePath = resource_path('views/layouts/guest.blade.php');
+        
+        $usingCDN = false;
+        if (file_exists($appBladePath)) {
+            $appBladeContent = file_get_contents($appBladePath);
+            if (strpos($appBladeContent, 'cdn.tailwindcss.com') !== false) {
+                $usingCDN = true;
+            }
+        }
+        
+        if (file_exists($guestBladePath)) {
+            $guestBladeContent = file_get_contents($guestBladePath);
+            if (strpos($guestBladeContent, 'cdn.tailwindcss.com') !== false) {
+                $usingCDN = true;
+            }
+        }
+        
+        if ($usingCDN) {
+            output("CSS Fallback", "Using Tailwind CSS CDN as fallback");
+        } else {
+            output("CSS Fallback", "No fallback detected for missing Vite manifest", true);
+        }
+    }
+    
 } catch (Exception $e) {
     output("Critical Error", $e->getMessage() . "\n" . $e->getTraceAsString(), true);
+}
+
+// Helper function to import facades
+function use_facade($alias, $class) {
+    if (!class_exists($alias)) {
+        class_alias($class, $alias);
+    }
 }
 
 echo "</div></body></html>";
