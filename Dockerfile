@@ -33,8 +33,13 @@ WORKDIR /var/www/html
 # Copy existing application directory contents
 COPY . /var/www/html
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Create log directory and set proper permissions
+RUN mkdir -p /var/www/html/storage/logs
+RUN touch /var/www/html/storage/logs/laravel.log
+RUN chown -R www-data:www-data /var/www/html/storage
+RUN chmod -R 775 /var/www/html/storage
+RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/bootstrap/cache
 
 # Install Composer dependencies with --no-scripts to avoid package discovery
 RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-scripts
@@ -60,19 +65,29 @@ echo "APP_NAME=MangaView" > .env\n\
 echo "APP_ENV=production" >> .env\n\
 echo "APP_DEBUG=true" >> .env\n\
 echo "APP_URL=${APP_URL}" >> .env\n\
+\n\
+# Explicitly set PostgreSQL as the only database connection\n\
+echo "DB_CONNECTION=pgsql" >> .env\n\
+\n\
+# Users database connection\n\
 echo "USERS_DB_HOST=${USERS_DB_HOST}" >> .env\n\
 echo "USERS_DB_PORT=${USERS_DB_PORT}" >> .env\n\
 echo "USERS_DB_DATABASE=${USERS_DB_DATABASE}" >> .env\n\
 echo "USERS_DB_USERNAME=${USERS_DB_USERNAME}" >> .env\n\
 echo "USERS_DB_PASSWORD=${USERS_DB_PASSWORD}" >> .env\n\
+\n\
+# Manga database connection\n\
 echo "MANGA_DB_HOST=${MANGA_DB_HOST}" >> .env\n\
 echo "MANGA_DB_PORT=${MANGA_DB_PORT}" >> .env\n\
 echo "MANGA_DB_DATABASE=${MANGA_DB_DATABASE}" >> .env\n\
 echo "MANGA_DB_USERNAME=${MANGA_DB_USERNAME}" >> .env\n\
 echo "MANGA_DB_PASSWORD=${MANGA_DB_PASSWORD}" >> .env\n\
+\n\
+# Session and cache configuration - explicitly use PostgreSQL\n\
 echo "CACHE_DRIVER=database" >> .env\n\
 echo "QUEUE_CONNECTION=sync" >> .env\n\
 echo "SESSION_DRIVER=database" >> .env\n\
+echo "SESSION_CONNECTION=users_db" >> .env\n\
 echo "SESSION_LIFETIME=120" >> .env\n\
 echo "LOG_CHANNEL=stderr" >> .env\n\
 \n\
