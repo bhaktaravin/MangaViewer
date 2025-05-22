@@ -32,21 +32,44 @@ class JikanImportController extends Controller
         try {
             Log::info('Searching MyAnimeList for: ' . $validated['search']);
             
-            $response = Http::get('https://api.jikan.moe/v4/manga', [
-                'q' => $validated['search'],
-                'limit' => 10,
+            // Use Guzzle client with better error handling
+            $client = new \GuzzleHttp\Client([
+                'timeout' => 15,
+                'connect_timeout' => 5,
+                'http_errors' => false,
             ]);
-
-            if ($response->successful()) {
-                $results = $response->json()['data'];
-                Log::info('Found ' . count($results) . ' results');
-                return view('manga.jikan_results', compact('results'));
+            
+            $response = $client->get('https://api.jikan.moe/v4/manga', [
+                'query' => [
+                    'q' => $validated['search'],
+                    'limit' => 10,
+                ]
+            ]);
+            
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+            
+            Log::info('Jikan API response status: ' . $statusCode);
+            
+            if ($statusCode >= 200 && $statusCode < 300) {
+                $data = json_decode($body, true);
+                
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $results = $data['data'];
+                    Log::info('Found ' . count($results) . ' results');
+                    return view('manga.jikan_results', compact('results'));
+                } else {
+                    Log::error('Invalid response format from Jikan API', ['body' => substr($body, 0, 500)]);
+                    return back()->with('error', 'Invalid response format from MyAnimeList API');
+                }
             } else {
-                Log::error('MyAnimeList search failed: ' . $response->status());
-                return back()->with('error', 'Failed to search MyAnimeList. Status: ' . $response->status());
+                Log::error('MyAnimeList search failed: ' . $statusCode, ['body' => substr($body, 0, 500)]);
+                return back()->with('error', 'Failed to search MyAnimeList. Status: ' . $statusCode);
             }
         } catch (\Exception $e) {
-            Log::error('MyAnimeList search exception: ' . $e->getMessage());
+            Log::error('MyAnimeList search exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'An error occurred: ' . $e->getMessage());
         }
     }

@@ -382,31 +382,79 @@ class MangaImportController extends Controller
     public function testMangaDexApi()
     {
         try {
-            // Test API connection by making a simple request
-            $client = new \GuzzleHttp\Client();
-            $response = $client->request('GET', 'https://api.mangadex.org/manga', [
+            // Create a new Guzzle HTTP client with timeout settings
+            $client = new \GuzzleHttp\Client([
+                'timeout' => 10,
+                'connect_timeout' => 5,
+                'http_errors' => false, // Don't throw exceptions for HTTP errors
+            ]);
+            
+            // Log the attempt
+            \Illuminate\Support\Facades\Log::info('Testing MangaDex API connection');
+            
+            // Test connection to MangaDex API
+            $response = $client->get('https://api.mangadex.org/manga', [
                 'query' => [
                     'limit' => 1
                 ]
             ]);
-
-            if ($response->getStatusCode() == 200) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'MangaDex API connection successful',
-                    'data' => json_decode($response->getBody(), true)
-                ]);
+            
+            // Get the response body
+            $body = $response->getBody()->getContents();
+            
+            // Log the response status and body for debugging
+            \Illuminate\Support\Facades\Log::info('MangaDex API Test Response', [
+                'status' => $response->getStatusCode(),
+                'body_preview' => substr($body, 0, 500)
+            ]);
+            
+            if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+                // For web requests
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'MangaDex API connection successful',
+                        'data' => json_decode($body, true)
+                    ]);
+                }
+                
+                return back()->with('success', 'Successfully connected to MangaDex API!');
             } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'MangaDex API returned status code: ' . $response->getStatusCode()
+                $errorMessage = 'Error connecting to MangaDex API. Status code: ' . $response->getStatusCode();
+                
+                // Log the error
+                \Illuminate\Support\Facades\Log::error($errorMessage, [
+                    'response' => $body
                 ]);
+                
+                // For web requests
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => $errorMessage
+                    ]);
+                }
+                
+                return back()->with('error', $errorMessage);
             }
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'MangaDex API connection failed: ' . $e->getMessage()
+            // Log the exception for debugging
+            \Illuminate\Support\Facades\Log::error('MangaDex API Test Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            
+            $errorMessage = 'Error testing API connection: ' . $e->getMessage();
+            
+            // For web requests
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $errorMessage
+                ]);
+            }
+            
+            return back()->with('error', $errorMessage);
         }
     }
 }
