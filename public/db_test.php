@@ -54,15 +54,15 @@ output("Database Connection Parameters", [
     'password' => '********' // Masked for security
 ]);
 
-// Test direct connection
+// Test direct connection with SSL required
 try {
-    $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
-    output("Connection String", $dsn);
+    $dsn = "pgsql:host={$host};port={$port};dbname={$database};sslmode=require";
+    output("Connection String (with SSL required)", $dsn);
     
     $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    output("Connection Status", "SUCCESS: Successfully connected to the database");
+    output("Connection Status", "SUCCESS: Successfully connected to the database with SSL");
     
     // Test query
     $stmt = $pdo->query("SELECT current_database() as db_name, current_user as username");
@@ -95,25 +95,63 @@ try {
     }
     
 } catch (PDOException $e) {
-    output("Connection Error", "ERROR: " . $e->getMessage(), true);
+    output("Connection Error (with SSL required)", "ERROR: " . $e->getMessage(), true);
     
-    // Try connecting without database name
+    // Try with SSL mode set to prefer
     try {
-        $dsn = "pgsql:host={$host};port={$port}";
-        output("Connection String (without database)", $dsn);
+        $dsn = "pgsql:host={$host};port={$port};dbname={$database};sslmode=prefer";
+        output("Connection String (with SSL prefer)", $dsn);
         
         $pdo = new PDO($dsn, $username, $password);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        output("Connection Status (without database)", "SUCCESS: Connected to PostgreSQL server, but not to specific database");
+        output("Connection Status (with SSL prefer)", "SUCCESS: Connected to database with SSL prefer mode");
         
-        // List available databases
-        $stmt = $pdo->query("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname");
-        $databases = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        // Test query
+        $stmt = $pdo->query("SELECT current_database() as db_name, current_user as username");
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        output("Available Databases", $databases);
+        output("Database Information", $result);
     } catch (PDOException $e2) {
-        output("Connection Error (without database)", "ERROR: " . $e2->getMessage(), true);
+        output("Connection Error (with SSL prefer)", "ERROR: " . $e2->getMessage(), true);
+        
+        // Try without SSL
+        try {
+            $dsn = "pgsql:host={$host};port={$port};dbname={$database};sslmode=disable";
+            output("Connection String (with SSL disabled)", $dsn);
+            
+            $pdo = new PDO($dsn, $username, $password);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            output("Connection Status (with SSL disabled)", "SUCCESS: Connected to database with SSL disabled");
+            
+            // Test query
+            $stmt = $pdo->query("SELECT current_database() as db_name, current_user as username");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            output("Database Information", $result);
+        } catch (PDOException $e3) {
+            output("Connection Error (with SSL disabled)", "ERROR: " . $e3->getMessage(), true);
+            
+            // Try connecting without database name
+            try {
+                $dsn = "pgsql:host={$host};port={$port};sslmode=require";
+                output("Connection String (without database, with SSL required)", $dsn);
+                
+                $pdo = new PDO($dsn, $username, $password);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                output("Connection Status (without database)", "SUCCESS: Connected to PostgreSQL server, but not to specific database");
+                
+                // List available databases
+                $stmt = $pdo->query("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname");
+                $databases = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                
+                output("Available Databases", $databases);
+            } catch (PDOException $e4) {
+                output("Connection Error (without database)", "ERROR: " . $e4->getMessage(), true);
+            }
+        }
     }
 }
 

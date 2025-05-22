@@ -42,8 +42,11 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
+            'schema' => 'public',
+            'sslmode' => 'require', // Changed from 'prefer' to 'require' for Render.com
+            'options' => [
+                PDO::ATTR_PERSISTENT => false,
+            ],
         ],
         
         'manga_db' => [
@@ -57,8 +60,11 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
+            'schema' => 'public',
+            'sslmode' => 'require', // Changed from 'prefer' to 'require' for Render.com
+            'options' => [
+                PDO::ATTR_PERSISTENT => false,
+            ],
         ],
 
     ],
