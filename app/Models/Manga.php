@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Manga extends Model
 {
     use HasFactory;
+    
+    /**
+     * The connection name for the model.
+     *
+     * @var string
+     */
+    protected $connection = 'manga_db';
 
     protected $fillable = [
         'title',

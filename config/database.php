@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'pgsql'),
+    'default' => env('DB_CONNECTION', 'users_db'),
 
     /*
     |--------------------------------------------------------------------------
@@ -40,6 +40,36 @@ return [
             'busy_timeout' => null,
             'journal_mode' => null,
             'synchronous' => null,
+        ],
+
+        'users_db' => [
+            'driver' => 'pgsql',
+            'url' => env('USERS_DB_URL'),
+            'host' => env('USERS_DB_HOST', '127.0.0.1'),
+            'port' => env('USERS_DB_PORT', '5432'),
+            'database' => env('USERS_DB_DATABASE', 'mangaview_users'),
+            'username' => env('USERS_DB_USERNAME', 'postgres'),
+            'password' => env('USERS_DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+        
+        'manga_db' => [
+            'driver' => 'pgsql',
+            'url' => env('MANGA_DB_URL'),
+            'host' => env('MANGA_DB_HOST', '127.0.0.1'),
+            'port' => env('MANGA_DB_PORT', '5432'),
+            'database' => env('MANGA_DB_DATABASE', 'mangaview_manga'),
+            'username' => env('MANGA_DB_USERNAME', 'postgres'),
+            'password' => env('MANGA_DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
         ],
 
         'mysql' => [

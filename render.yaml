@@ -14,33 +14,61 @@ services:
           type: web
           name: mangaview
           property: host
-      - key: DB_CONNECTION
-        value: pgsql
-      - key: DB_HOST
+          
+      # Users database connection
+      - key: USERS_DB_HOST
         fromService:
-          name: mangaview-db
+          name: mangaview-users-db
           type: pserv
           property: host
-      - key: DB_PORT
+      - key: USERS_DB_PORT
         fromService:
-          name: mangaview-db
+          name: mangaview-users-db
           type: pserv
           property: port
-      - key: DB_DATABASE
+      - key: USERS_DB_DATABASE
         fromService:
-          name: mangaview-db
+          name: mangaview-users-db
           type: pserv
           property: database
-      - key: DB_USERNAME
+      - key: USERS_DB_USERNAME
         fromService:
-          name: mangaview-db
+          name: mangaview-users-db
           type: pserv
           property: user
-      - key: DB_PASSWORD
+      - key: USERS_DB_PASSWORD
         fromService:
-          name: mangaview-db
+          name: mangaview-users-db
           type: pserv
           property: password
+          
+      # Manga database connection
+      - key: MANGA_DB_HOST
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: host
+      - key: MANGA_DB_PORT
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: port
+      - key: MANGA_DB_DATABASE
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: database
+      - key: MANGA_DB_USERNAME
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: user
+      - key: MANGA_DB_PASSWORD
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: password
+          
       - key: SESSION_DRIVER
         value: database
       - key: CACHE_DRIVER
@@ -55,11 +83,22 @@ services:
     buildCommand: ""
     startCommand: ""
 
+  # Users database service
   - type: pserv
-    name: mangaview-db
+    name: mangaview-users-db
     plan: free
     env: docker
     disk:
-      name: data
+      name: users-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Manga database service
+  - type: pserv
+    name: mangaview-manga-db
+    plan: free
+    env: docker
+    disk:
+      name: manga-data
       mountPath: /var/lib/postgresql/data
       sizeGB: 1

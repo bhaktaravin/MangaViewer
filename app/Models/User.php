@@ -11,6 +11,13 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+    
+    /**
+     * The connection name for the model.
+     *
+     * @var string
+     */
+    protected $connection = 'users_db';
 
     /**
      * The attributes that are mass assignable.

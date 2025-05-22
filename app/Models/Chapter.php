@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Chapter extends Model
 {
     use HasFactory;
+    
+    /**
+     * The connection name for the model.
+     *
+     * @var string
+     */
+    protected $connection = 'manga_db';
 
     protected $fillable = [
         'manga_id',
