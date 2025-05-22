@@ -48,4 +48,14 @@ use Illuminate\Support\Facades\Route;
             </x-primary-button>
         </div>
     </form>
+    
+    <!-- Add Register Link -->
+    <div class="text-center mt-4 pt-4 border-t border-gray-200">
+        <p class="text-sm text-gray-600">
+            {{ __("Don't have an account?") }}
+            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('register') }}">
+                {{ __('Register now') }}
+            </a>
+        </p>
+    </div>
 </x-guest-layout>
