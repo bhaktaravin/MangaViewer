@@ -83,12 +83,14 @@ try {
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
     output("Kernel", "Successfully created the HTTP kernel");
     
+    // Important: Bootstrap the application before using any facades
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    output("Application", "Successfully bootstrapped the Laravel console kernel");
+    
     // 5. Check database connection
     try {
-        // Import the DB facade explicitly
-        use_facade('DB', 'Illuminate\Support\Facades\DB');
-        
-        $connection = \Illuminate\Support\Facades\DB::connection();
+        // Use the application container directly instead of facades
+        $connection = $app['db']->connection();
         $driver = $connection->getDriverName();
         output("Database Connection", "Successfully connected to the database using driver: " . $driver);
         
@@ -107,12 +109,12 @@ try {
             
             // 6. Check users table if it exists
             if (in_array('users', $tables)) {
-                $usersCount = \Illuminate\Support\Facades\DB::table('users')->count();
+                $usersCount = $app['db']->table('users')->count();
                 output("Users Table", "Found {$usersCount} users in the database");
                 
                 // Get first user (without sensitive info)
                 if ($usersCount > 0) {
-                    $firstUser = \Illuminate\Support\Facades\DB::table('users')->select('id', 'name', 'email', 'created_at')->first();
+                    $firstUser = $app['db']->table('users')->select('id', 'name', 'email', 'created_at')->first();
                     output("First User", $firstUser);
                 }
             }
@@ -251,13 +253,6 @@ try {
     
 } catch (Exception $e) {
     output("Critical Error", $e->getMessage() . "\n" . $e->getTraceAsString(), true);
-}
-
-// Helper function to import facades
-function use_facade($alias, $class) {
-    if (!class_exists($alias)) {
-        class_alias($class, $alias);
-    }
 }
 
 echo "</div></body></html>";
