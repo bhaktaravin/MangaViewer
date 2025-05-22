@@ -69,16 +69,16 @@ echo "APP_URL=${APP_URL}" >> .env\n\
 # Explicitly set PostgreSQL as the only database connection\n\
 echo "DB_CONNECTION=pgsql" >> .env\n\
 \n\
-# Users database connection\n\
+# Users database connection - ensure port is numeric\n\
 echo "USERS_DB_HOST=${USERS_DB_HOST}" >> .env\n\
-echo "USERS_DB_PORT=${USERS_DB_PORT}" >> .env\n\
+echo "USERS_DB_PORT=${USERS_DB_PORT:-5432}" >> .env\n\
 echo "USERS_DB_DATABASE=${USERS_DB_DATABASE}" >> .env\n\
 echo "USERS_DB_USERNAME=${USERS_DB_USERNAME}" >> .env\n\
 echo "USERS_DB_PASSWORD=${USERS_DB_PASSWORD}" >> .env\n\
 \n\
-# Manga database connection\n\
+# Manga database connection - ensure port is numeric\n\
 echo "MANGA_DB_HOST=${MANGA_DB_HOST}" >> .env\n\
-echo "MANGA_DB_PORT=${MANGA_DB_PORT}" >> .env\n\
+echo "MANGA_DB_PORT=${MANGA_DB_PORT:-5432}" >> .env\n\
 echo "MANGA_DB_DATABASE=${MANGA_DB_DATABASE}" >> .env\n\
 echo "MANGA_DB_USERNAME=${MANGA_DB_USERNAME}" >> .env\n\
 echo "MANGA_DB_PASSWORD=${MANGA_DB_PASSWORD}" >> .env\n\
@@ -101,6 +101,13 @@ fi\n\
 \n\
 # Clear config cache\n\
 php artisan config:clear\n\
+\n\
+# Debug database connection parameters\n\
+echo "Database connection parameters:"\n\
+echo "USERS_DB_HOST: ${USERS_DB_HOST}"\n\
+echo "USERS_DB_PORT: ${USERS_DB_PORT:-5432}"\n\
+echo "USERS_DB_DATABASE: ${USERS_DB_DATABASE}"\n\
+echo "USERS_DB_USERNAME: ${USERS_DB_USERNAME}"\n\
 \n\
 # Run database setup script\n\
 ./setup_database.sh\n\
