@@ -8,7 +8,7 @@
 GITHUB_USERNAME="bhaktaravin"
 REPO_NAME="MangaViewer"
 DEV_BRANCH="development"
-COMMIT_MESSAGE="Updated PHP Artisan for Render.com"
+COMMIT_MESSAGE="Add register link to login page and implement multi-database architecture"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -143,7 +143,7 @@ git checkout $DEV_BRANCH
 
 ## About
 
-MangaView is a Laravel-based web application that combines user authentication with a personal manga reader. The project uses SQLite for database storage and Laravel Breeze for authentication.
+MangaView is a Laravel-based web application that combines user authentication with a personal manga reader. The project uses PostgreSQL for database storage with a multi-database architecture (separate databases for users and manga content) and Laravel Breeze for authentication.
 EOL
 
     # Commit the README to the main branch
