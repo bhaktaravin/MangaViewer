@@ -14,63 +14,80 @@ services:
           type: web
           name: mangaview
           property: host
+      
+      # Explicitly set DB_CONNECTION to pgsql
+      - key: DB_CONNECTION
+        value: pgsql
           
-      # Users database connection
+      # Users database connection - explicitly set with sync: false to ensure values are available
       - key: USERS_DB_HOST
         fromService:
           name: mangaview-users-db
           type: pserv
           property: host
+        sync: false
       - key: USERS_DB_PORT
         fromService:
           name: mangaview-users-db
           type: pserv
           property: port
+        sync: false
       - key: USERS_DB_DATABASE
         fromService:
           name: mangaview-users-db
           type: pserv
           property: database
+        sync: false
       - key: USERS_DB_USERNAME
         fromService:
           name: mangaview-users-db
           type: pserv
           property: user
+        sync: false
       - key: USERS_DB_PASSWORD
         fromService:
           name: mangaview-users-db
           type: pserv
           property: password
+        sync: false
           
-      # Manga database connection
+      # Manga database connection - explicitly set with sync: false
       - key: MANGA_DB_HOST
         fromService:
           name: mangaview-manga-db
           type: pserv
           property: host
+        sync: false
       - key: MANGA_DB_PORT
         fromService:
           name: mangaview-manga-db
           type: pserv
           property: port
+        sync: false
       - key: MANGA_DB_DATABASE
         fromService:
           name: mangaview-manga-db
           type: pserv
           property: database
+        sync: false
       - key: MANGA_DB_USERNAME
         fromService:
           name: mangaview-manga-db
           type: pserv
           property: user
+        sync: false
       - key: MANGA_DB_PASSWORD
         fromService:
           name: mangaview-manga-db
           type: pserv
           property: password
+        sync: false
           
+      # Session configuration - explicitly set
       - key: SESSION_DRIVER
         value: database
+      - key: SESSION_CONNECTION
+        value: users_db
       - key: CACHE_DRIVER
         value: database
       - key: APP_KEY
@@ -79,11 +96,11 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: debug
-    healthCheckPath: /
+    healthCheckPath: /diagnostic.php
     buildCommand: ""
     startCommand: ""
 
-  # Users database service
+  # Users database service - explicitly set database name
   - type: pserv
     name: mangaview-users-db
     plan: free
@@ -92,8 +109,16 @@ services:
       name: users-data
       mountPath: /var/lib/postgresql/data
       sizeGB: 1
+    ipAllowList: [] # Allow all IPs to connect
+    envVars:
+      - key: POSTGRES_DB
+        value: mangaview_users
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
 
-  # Manga database service
+  # Manga database service - explicitly set database name
   - type: pserv
     name: mangaview-manga-db
     plan: free
@@ -102,3 +127,11 @@ services:
       name: manga-data
       mountPath: /var/lib/postgresql/data
       sizeGB: 1
+    ipAllowList: [] # Allow all IPs to connect
+    envVars:
+      - key: POSTGRES_DB
+        value: mangaview_manga
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
