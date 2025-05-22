@@ -39,15 +39,19 @@ APP_ENV=production\n\
 APP_KEY=base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\
 APP_DEBUG=true\n\
 APP_URL=http://localhost\n\
-DB_CONNECTION=pgsql\n\
-DB_HOST=\${DB_HOST}\n\
-DB_PORT=\${DB_PORT}\n\
-DB_DATABASE=\${DB_DATABASE}\n\
-DB_USERNAME=\${DB_USERNAME}\n\
-DB_PASSWORD=\${DB_PASSWORD}\n\
-CACHE_DRIVER=file\n\
+USERS_DB_HOST=\${USERS_DB_HOST}\n\
+USERS_DB_PORT=\${USERS_DB_PORT}\n\
+USERS_DB_DATABASE=\${USERS_DB_DATABASE}\n\
+USERS_DB_USERNAME=\${USERS_DB_USERNAME}\n\
+USERS_DB_PASSWORD=\${USERS_DB_PASSWORD}\n\
+MANGA_DB_HOST=\${MANGA_DB_HOST}\n\
+MANGA_DB_PORT=\${MANGA_DB_PORT}\n\
+MANGA_DB_DATABASE=\${MANGA_DB_DATABASE}\n\
+MANGA_DB_USERNAME=\${MANGA_DB_USERNAME}\n\
+MANGA_DB_PASSWORD=\${MANGA_DB_PASSWORD}\n\
+CACHE_DRIVER=database\n\
 QUEUE_CONNECTION=sync\n\
-SESSION_DRIVER=file\n\
+SESSION_DRIVER=database\n\
 SESSION_LIFETIME=120" > .env
 
 # Set permissions
@@ -70,6 +74,9 @@ COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 # Generate application key
 RUN php artisan key:generate --force
 
+# Make the database setup script executable
+RUN chmod +x setup_database.sh
+
 # Cache configuration
 RUN php artisan config:cache
 RUN php artisan route:cache
@@ -78,5 +85,5 @@ RUN php artisan view:cache
 # Expose port 80
 EXPOSE 80
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Start Apache and run database setup script
+CMD bash -c "./setup_database.sh && apache2-foreground"
