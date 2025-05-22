@@ -11,13 +11,15 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     nodejs \
-    npm
+    npm \
+    postgresql-client \
+    libpq-dev
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip pdo pdo_pgsql
 
 # Configure PHP
 RUN echo "memory_limit=2G" > /usr/local/etc/php/conf.d/memory-limit.ini
@@ -37,7 +39,12 @@ APP_ENV=production\n\
 APP_KEY=base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\
 APP_DEBUG=true\n\
 APP_URL=http://localhost\n\
-DB_CONNECTION=sqlite\n\
+DB_CONNECTION=pgsql\n\
+DB_HOST=\${DB_HOST}\n\
+DB_PORT=\${DB_PORT}\n\
+DB_DATABASE=\${DB_DATABASE}\n\
+DB_USERNAME=\${DB_USERNAME}\n\
+DB_PASSWORD=\${DB_PASSWORD}\n\
 CACHE_DRIVER=file\n\
 QUEUE_CONNECTION=sync\n\
 SESSION_DRIVER=file\n\
@@ -67,12 +74,6 @@ RUN php artisan key:generate --force
 RUN php artisan config:cache
 RUN php artisan route:cache
 RUN php artisan view:cache
-
-# Create SQLite database if using SQLite
-RUN mkdir -p database
-RUN touch database/database.sqlite
-RUN chown -R www-data:www-data database
-RUN php artisan migrate --force
 
 # Expose port 80
 EXPOSE 80

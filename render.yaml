@@ -15,7 +15,32 @@ services:
           name: mangaview
           property: host
       - key: DB_CONNECTION
-        value: sqlite
+        value: pgsql
+      - key: DB_HOST
+        fromService:
+          name: mangaview-db
+          type: pserv
+          property: host
+      - key: DB_PORT
+        fromService:
+          name: mangaview-db
+          type: pserv
+          property: port
+      - key: DB_DATABASE
+        fromService:
+          name: mangaview-db
+          type: pserv
+          property: database
+      - key: DB_USERNAME
+        fromService:
+          name: mangaview-db
+          type: pserv
+          property: user
+      - key: DB_PASSWORD
+        fromService:
+          name: mangaview-db
+          type: pserv
+          property: password
       - key: SESSION_DRIVER
         value: database
       - key: CACHE_DRIVER
@@ -26,3 +51,15 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: debug
+    healthCheckPath: /
+    buildCommand: ""
+    startCommand: ""
+
+  - type: pserv
+    name: mangaview-db
+    plan: free
+    env: docker
+    disk:
+      name: data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
