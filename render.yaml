@@ -83,6 +83,18 @@ services:
           property: password
         sync: false
           
+      # Full connection URLs for direct use
+      - key: USERS_DB_URL
+        fromService:
+          name: mangaview-users-db
+          type: pserv
+          property: connectionString
+      - key: MANGA_DB_URL
+        fromService:
+          name: mangaview-manga-db
+          type: pserv
+          property: connectionString
+          
       # Session configuration - explicitly set
       - key: SESSION_DRIVER
         value: database

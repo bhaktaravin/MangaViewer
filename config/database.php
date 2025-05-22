@@ -33,17 +33,19 @@ return [
 
         'users_db' => [
             'driver' => 'pgsql',
-            // IMPORTANT: Replace these values with the actual values from your Render.com dashboard
-            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com', // Replace with actual host
+            // Using the external connection string directly
+            'url' => 'postgres://postgres:YOUR_ACTUAL_PASSWORD@dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com/mangaview_users',
+            // Fallback configuration if URL doesn't work
+            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com',
             'port' => 5432,
-            'database' => 'mangaview_users', // Replace with actual database name
-            'username' => 'postgres', // Replace with actual username
-            'password' => 'YOUR_ACTUAL_PASSWORD', // Replace with actual password
+            'database' => 'mangaview_users',
+            'username' => 'postgres',
+            'password' => 'YOUR_ACTUAL_PASSWORD',
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'schema' => 'public',
-            'sslmode' => 'require', // Changed from 'prefer' to 'require' for Render.com
+            'sslmode' => 'verify-ca', // Changed to verify-ca
             'options' => [
                 PDO::ATTR_PERSISTENT => false,
             ],
@@ -51,17 +53,19 @@ return [
         
         'manga_db' => [
             'driver' => 'pgsql',
-            // IMPORTANT: Replace these values with the actual values from your Render.com dashboard
-            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com', // Replace with actual host
+            // Using the external connection string directly
+            'url' => 'postgres://postgres:YOUR_ACTUAL_PASSWORD@dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com/mangaview_manga',
+            // Fallback configuration if URL doesn't work
+            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com',
             'port' => 5432,
-            'database' => 'mangaview_manga', // Replace with actual database name
-            'username' => 'postgres', // Replace with actual username
-            'password' => 'YOUR_ACTUAL_PASSWORD', // Replace with actual password
+            'database' => 'mangaview_manga',
+            'username' => 'postgres',
+            'password' => 'YOUR_ACTUAL_PASSWORD',
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'schema' => 'public',
-            'sslmode' => 'require', // Changed from 'prefer' to 'require' for Render.com
+            'sslmode' => 'verify-ca', // Changed to verify-ca
             'options' => [
                 PDO::ATTR_PERSISTENT => false,
             ],
