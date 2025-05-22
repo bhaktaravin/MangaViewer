@@ -12,7 +12,20 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @viteAssets
+        @if(app()->environment('local'))
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @else
+            <!-- Tailwind CSS CDN -->
+            <script src="https://cdn.tailwindcss.com"></script>
+            <!-- Basic styles to ensure immediate styling -->
+            <style>
+                body { font-family: 'Figtree', sans-serif; }
+                .min-h-screen { min-height: 100vh; }
+                .bg-gray-100 { background-color: #f3f4f6; }
+                .bg-white { background-color: white; }
+                .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+            </style>
+        @endif
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
