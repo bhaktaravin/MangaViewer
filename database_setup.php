@@ -11,6 +11,52 @@ $kernel->bootstrap();
 use Illuminate\Support\Facades\Log;
 Log::info('Starting database setup script');
 
+// First, try to create the databases if they don't exist
+try {
+    // Get connection parameters from environment
+    $host = env('USERS_DB_HOST', '127.0.0.1');
+    $port = env('USERS_DB_PORT', '5432');
+    $username = env('USERS_DB_USERNAME', 'postgres');
+    $password = env('USERS_DB_PASSWORD', '');
+    $usersDb = env('USERS_DB_DATABASE', 'mangaview_users');
+    $mangaDb = env('MANGA_DB_DATABASE', 'mangaview_manga');
+    
+    Log::info("Attempting to connect to PostgreSQL at {$host}:{$port} to create databases");
+    
+    // Connect to PostgreSQL without specifying a database (connect to 'postgres' default database)
+    $dsn = "pgsql:host={$host};port={$port};dbname=postgres";
+    $pdo = new PDO($dsn, $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Check if users database exists
+    $stmt = $pdo->query("SELECT 1 FROM pg_database WHERE datname = '{$usersDb}'");
+    $exists = $stmt->fetchColumn();
+    
+    if (!$exists) {
+        Log::info("Creating users database: {$usersDb}");
+        $pdo->exec("CREATE DATABASE {$usersDb}");
+        echo "Created users database: {$usersDb}\n";
+    } else {
+        Log::info("Users database {$usersDb} already exists");
+    }
+    
+    // Check if manga database exists
+    $stmt = $pdo->query("SELECT 1 FROM pg_database WHERE datname = '{$mangaDb}'");
+    $exists = $stmt->fetchColumn();
+    
+    if (!$exists) {
+        Log::info("Creating manga database: {$mangaDb}");
+        $pdo->exec("CREATE DATABASE {$mangaDb}");
+        echo "Created manga database: {$mangaDb}\n";
+    } else {
+        Log::info("Manga database {$mangaDb} already exists");
+    }
+    
+} catch (\Exception $e) {
+    Log::error('Failed to create databases: ' . $e->getMessage());
+    echo "Failed to create databases: " . $e->getMessage() . "\n";
+}
+
 // Function to check if a table exists
 function tableExists($connection, $table) {
     try {
