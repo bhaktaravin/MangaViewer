@@ -33,56 +33,32 @@ return [
 
         'users_db' => [
             'driver' => 'pgsql',
-            'url' => null, // Don't use URL to avoid parameter mixing
-            'host' => env('USERS_DB_HOST') ? trim(env('USERS_DB_HOST')) : 'localhost',
-            'port' => env('USERS_DB_PORT') ? intval(env('USERS_DB_PORT')) : 5432,
-            'database' => env('USERS_DB_DATABASE') ? trim(env('USERS_DB_DATABASE')) : 'mangaview_users',
-            'username' => env('USERS_DB_USERNAME') ? trim(env('USERS_DB_USERNAME')) : 'postgres',
-            'password' => env('USERS_DB_PASSWORD', ''),
+            // IMPORTANT: Replace these values with the actual values from your Render.com dashboard
+            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com', // Replace with actual host
+            'port' => 5432,
+            'database' => 'mangaview_users', // Replace with actual database name
+            'username' => 'postgres', // Replace with actual username
+            'password' => 'YOUR_ACTUAL_PASSWORD', // Replace with actual password
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
-            'options' => [
-                PDO::ATTR_PERSISTENT => false,
-            ],
         ],
         
         'manga_db' => [
             'driver' => 'pgsql',
-            'url' => null, // Don't use URL to avoid parameter mixing
-            'host' => env('MANGA_DB_HOST') ? trim(env('MANGA_DB_HOST')) : 'localhost',
-            'port' => env('MANGA_DB_PORT') ? intval(env('MANGA_DB_PORT')) : 5432,
-            'database' => env('MANGA_DB_DATABASE') ? trim(env('MANGA_DB_DATABASE')) : 'mangaview_manga',
-            'username' => env('MANGA_DB_USERNAME') ? trim(env('MANGA_DB_USERNAME')) : 'postgres',
-            'password' => env('MANGA_DB_PASSWORD', ''),
+            // IMPORTANT: Replace these values with the actual values from your Render.com dashboard
+            'host' => 'dpg-cnn9nnf109ks73f9ue70-a.oregon-postgres.render.com', // Replace with actual host
+            'port' => 5432,
+            'database' => 'mangaview_manga', // Replace with actual database name
+            'username' => 'postgres', // Replace with actual username
+            'password' => 'YOUR_ACTUAL_PASSWORD', // Replace with actual password
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
-            'options' => [
-                PDO::ATTR_PERSISTENT => false,
-            ],
-        ],
-
-        'pgsql' => [
-            'driver' => 'pgsql',
-            'url' => null,
-            'host' => env('DB_HOST') ? trim(env('DB_HOST')) : 'localhost',
-            'port' => env('DB_PORT') ? intval(env('DB_PORT')) : 5432,
-            'database' => env('DB_DATABASE') ? trim(env('DB_DATABASE')) : 'mangaview',
-            'username' => env('DB_USERNAME') ? trim(env('DB_USERNAME')) : 'postgres',
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => 'utf8',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
-            'options' => [
-                PDO::ATTR_PERSISTENT => false,
-            ],
         ],
 
     ],
