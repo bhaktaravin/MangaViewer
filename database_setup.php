@@ -57,7 +57,19 @@ try {
     echo "Failed to create databases: " . $e->getMessage() . "\n";
 }
 
-// Function to check if a table exists
+// Function to check if a table exists using direct SQL query
+function tableExistsSQL($connection, $table) {
+    try {
+        $tables = \Illuminate\Support\Facades\DB::connection($connection)
+            ->select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", [$table]);
+        return count($tables) > 0;
+    } catch (\Exception $e) {
+        Log::error("Error checking if table {$table} exists on {$connection} using SQL: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Function to check if a table exists using Schema
 function tableExists($connection, $table) {
     try {
         return \Illuminate\Support\Facades\Schema::connection($connection)->hasTable($table);
@@ -71,8 +83,31 @@ function tableExists($connection, $table) {
 function createUsersTables() {
     Log::info('Checking users database tables...');
     
+    // Get list of existing tables first
+    try {
+        $tables = \Illuminate\Support\Facades\DB::connection('users_db')
+            ->select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        
+        $existingTables = [];
+        foreach ($tables as $table) {
+            $existingTables[] = $table->table_name;
+        }
+        
+        Log::info('Existing tables in users_db: ' . implode(', ', $existingTables));
+        
+        // If core tables already exist, skip creation
+        if (in_array('users', $existingTables) && 
+            in_array('password_reset_tokens', $existingTables) && 
+            in_array('sessions', $existingTables)) {
+            Log::info('Core users tables already exist, skipping table creation');
+            return;
+        }
+    } catch (\Exception $e) {
+        Log::error('Error checking existing tables: ' . $e->getMessage());
+    }
+    
     // Check and create users table
-    if (!tableExists('users_db', 'users')) {
+    if (!tableExistsSQL('users_db', 'users')) {
         Log::info('Creating users table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('users', function ($table) {
@@ -93,7 +128,7 @@ function createUsersTables() {
     }
     
     // Check and create password_reset_tokens table
-    if (!tableExists('users_db', 'password_reset_tokens')) {
+    if (!tableExistsSQL('users_db', 'password_reset_tokens')) {
         Log::info('Creating password_reset_tokens table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('password_reset_tokens', function ($table) {
@@ -108,7 +143,7 @@ function createUsersTables() {
     }
     
     // Check and create sessions table
-    if (!tableExists('users_db', 'sessions')) {
+    if (!tableExistsSQL('users_db', 'sessions')) {
         Log::info('Creating sessions table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('sessions', function ($table) {
@@ -126,7 +161,7 @@ function createUsersTables() {
     }
     
     // Check and create failed_jobs table
-    if (!tableExists('users_db', 'failed_jobs')) {
+    if (!tableExistsSQL('users_db', 'failed_jobs')) {
         Log::info('Creating failed_jobs table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('failed_jobs', function ($table) {
@@ -145,7 +180,7 @@ function createUsersTables() {
     }
     
     // Check and create personal_access_tokens table
-    if (!tableExists('users_db', 'personal_access_tokens')) {
+    if (!tableExistsSQL('users_db', 'personal_access_tokens')) {
         Log::info('Creating personal_access_tokens table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('personal_access_tokens', function ($table) {
@@ -165,7 +200,7 @@ function createUsersTables() {
     }
     
     // Check and create cache table
-    if (!tableExists('users_db', 'cache')) {
+    if (!tableExistsSQL('users_db', 'cache')) {
         Log::info('Creating cache table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('cache', function ($table) {
@@ -180,7 +215,7 @@ function createUsersTables() {
     }
     
     // Check and create cache_locks table
-    if (!tableExists('users_db', 'cache_locks')) {
+    if (!tableExistsSQL('users_db', 'cache_locks')) {
         Log::info('Creating cache_locks table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('cache_locks', function ($table) {
@@ -195,7 +230,7 @@ function createUsersTables() {
     }
     
     // Check and create migrations table
-    if (!tableExists('users_db', 'migrations')) {
+    if (!tableExistsSQL('users_db', 'migrations')) {
         Log::info('Creating migrations table');
         try {
             \Illuminate\Support\Facades\Schema::connection('users_db')->create('migrations', function ($table) {
@@ -214,8 +249,31 @@ function createUsersTables() {
 function createMangaTables() {
     Log::info('Checking manga database tables...');
     
+    // Get list of existing tables first
+    try {
+        $tables = \Illuminate\Support\Facades\DB::connection('manga_db')
+            ->select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        
+        $existingTables = [];
+        foreach ($tables as $table) {
+            $existingTables[] = $table->table_name;
+        }
+        
+        Log::info('Existing tables in manga_db: ' . implode(', ', $existingTables));
+        
+        // If core tables already exist, skip creation
+        if (in_array('mangas', $existingTables) && 
+            in_array('chapters', $existingTables) && 
+            in_array('pages', $existingTables)) {
+            Log::info('Core manga tables already exist, skipping table creation');
+            return;
+        }
+    } catch (\Exception $e) {
+        Log::error('Error checking existing tables: ' . $e->getMessage());
+    }
+    
     // Check and create mangas table
-    if (!tableExists('manga_db', 'mangas')) {
+    if (!tableExistsSQL('manga_db', 'mangas')) {
         Log::info('Creating mangas table');
         try {
             \Illuminate\Support\Facades\Schema::connection('manga_db')->create('mangas', function ($table) {
@@ -237,7 +295,7 @@ function createMangaTables() {
     }
     
     // Check and create chapters table
-    if (!tableExists('manga_db', 'chapters')) {
+    if (!tableExistsSQL('manga_db', 'chapters')) {
         Log::info('Creating chapters table');
         try {
             \Illuminate\Support\Facades\Schema::connection('manga_db')->create('chapters', function ($table) {
@@ -256,7 +314,7 @@ function createMangaTables() {
     }
     
     // Check and create pages table
-    if (!tableExists('manga_db', 'pages')) {
+    if (!tableExistsSQL('manga_db', 'pages')) {
         Log::info('Creating pages table');
         try {
             \Illuminate\Support\Facades\Schema::connection('manga_db')->create('pages', function ($table) {
@@ -273,7 +331,7 @@ function createMangaTables() {
     }
     
     // Check and create migrations table
-    if (!tableExists('manga_db', 'migrations')) {
+    if (!tableExistsSQL('manga_db', 'migrations')) {
         Log::info('Creating migrations table');
         try {
             \Illuminate\Support\Facades\Schema::connection('manga_db')->create('migrations', function ($table) {
