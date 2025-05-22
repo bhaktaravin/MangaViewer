@@ -33,11 +33,11 @@ return [
 
         'users_db' => [
             'driver' => 'pgsql',
-            'url' => env('USERS_DB_URL'),
-            'host' => env('USERS_DB_HOST', '127.0.0.1'),
+            'url' => null, // Don't use URL to avoid parameter mixing
+            'host' => trim(env('USERS_DB_HOST', '127.0.0.1')), // Ensure host is trimmed
             'port' => intval(env('USERS_DB_PORT', '5432')), // Force integer conversion
-            'database' => env('USERS_DB_DATABASE', 'mangaview_users'),
-            'username' => env('USERS_DB_USERNAME', 'postgres'),
+            'database' => trim(env('USERS_DB_DATABASE', 'mangaview_users')), // Ensure database name is trimmed
+            'username' => trim(env('USERS_DB_USERNAME', 'postgres')), // Ensure username is trimmed
             'password' => env('USERS_DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
@@ -51,11 +51,11 @@ return [
         
         'manga_db' => [
             'driver' => 'pgsql',
-            'url' => env('MANGA_DB_URL'),
-            'host' => env('MANGA_DB_HOST', '127.0.0.1'),
+            'url' => null, // Don't use URL to avoid parameter mixing
+            'host' => trim(env('MANGA_DB_HOST', '127.0.0.1')), // Ensure host is trimmed
             'port' => intval(env('MANGA_DB_PORT', '5432')), // Force integer conversion
-            'database' => env('MANGA_DB_DATABASE', 'mangaview_manga'),
-            'username' => env('MANGA_DB_USERNAME', 'postgres'),
+            'database' => trim(env('MANGA_DB_DATABASE', 'mangaview_manga')), // Ensure database name is trimmed
+            'username' => trim(env('MANGA_DB_USERNAME', 'postgres')), // Ensure username is trimmed
             'password' => env('MANGA_DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
@@ -69,11 +69,11 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => intval(env('DB_PORT', '5432')), // Force integer conversion
-            'database' => env('DB_DATABASE', 'mangaview'),
-            'username' => env('DB_USERNAME', 'postgres'),
+            'url' => null,
+            'host' => trim(env('DB_HOST', '127.0.0.1')),
+            'port' => intval(env('DB_PORT', '5432')),
+            'database' => trim(env('DB_DATABASE', 'mangaview')),
+            'username' => trim(env('DB_USERNAME', 'postgres')),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
