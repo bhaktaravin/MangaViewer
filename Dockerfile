@@ -18,8 +18,11 @@ RUN apt-get update && apt-get install -y \
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
+# Install PHP extensions - ensure pdo_pgsql is installed and enabled
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip pdo pdo_pgsql
+
+# Verify PostgreSQL extension is installed
+RUN php -m | grep pdo_pgsql || (echo "PostgreSQL PDO driver not installed!" && exit 1)
 
 # Configure PHP
 RUN echo "memory_limit=2G" > /usr/local/etc/php/conf.d/memory-limit.ini
@@ -83,6 +86,10 @@ echo "MANGA_DB_DATABASE=\"${MANGA_DB_DATABASE}\"" >> .env\n\
 echo "MANGA_DB_USERNAME=\"${MANGA_DB_USERNAME}\"" >> .env\n\
 echo "MANGA_DB_PASSWORD=\"${MANGA_DB_PASSWORD}\"" >> .env\n\
 \n\
+# Full connection URLs for direct use\n\
+echo "USERS_DB_URL=\"${USERS_DB_URL}\"" >> .env\n\
+echo "MANGA_DB_URL=\"${MANGA_DB_URL}\"" >> .env\n\
+\n\
 # Session and cache configuration - explicitly use PostgreSQL\n\
 echo "CACHE_DRIVER=database" >> .env\n\
 echo "QUEUE_CONNECTION=sync" >> .env\n\
@@ -102,15 +109,18 @@ fi\n\
 # Clear config cache\n\
 php artisan config:clear\n\
 \n\
+# Check if PostgreSQL extension is installed\n\
+echo "Checking PHP extensions..."\n\
+php -m | grep pdo\n\
+php -m | grep pgsql\n\
+\n\
 # Debug database connection parameters in detail\n\
 echo "Database connection parameters (detailed):"\n\
 echo "USERS_DB_HOST: \"${USERS_DB_HOST}\""\n\
 echo "USERS_DB_PORT: \"${USERS_DB_PORT:-5432}\""\n\
 echo "USERS_DB_DATABASE: \"${USERS_DB_DATABASE}\""\n\
 echo "USERS_DB_USERNAME: \"${USERS_DB_USERNAME}\""\n\
-echo "MANGA_DB_HOST: \"${MANGA_DB_HOST}\""\n\
-echo "MANGA_DB_PORT: \"${MANGA_DB_PORT:-5432}\""\n\
-echo "MANGA_DB_DATABASE: \"${MANGA_DB_DATABASE}\""\n\
+echo "USERS_DB_URL: \"${USERS_DB_URL}\""\n\
 \n\
 # Run database setup script\n\
 ./setup_database.sh\n\
