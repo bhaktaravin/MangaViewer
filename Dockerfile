@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install system dependencies
+# Install system dependencies with explicit PostgreSQL packages
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -18,10 +18,17 @@ RUN apt-get update && apt-get install -y \
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions - ensure pdo_pgsql is installed and enabled
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip pdo pdo_pgsql
+# Install PHP extensions - ensure pgsql and pdo_pgsql are installed separately and explicitly
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip pdo
+RUN docker-php-ext-install pgsql
+RUN docker-php-ext-install pdo_pgsql
 
-# Verify PostgreSQL extension is installed
+# Create custom PHP configuration files to ensure PostgreSQL extensions are enabled
+RUN echo "extension=pdo_pgsql.so" > /usr/local/etc/php/conf.d/pdo_pgsql.ini
+RUN echo "extension=pgsql.so" > /usr/local/etc/php/conf.d/pgsql.ini
+
+# Verify PostgreSQL extensions are installed
+RUN php -m | grep pgsql || (echo "PostgreSQL extension not installed!" && exit 1)
 RUN php -m | grep pdo_pgsql || (echo "PostgreSQL PDO driver not installed!" && exit 1)
 
 # Configure PHP
@@ -113,6 +120,7 @@ php artisan config:clear\n\
 echo "Checking PHP extensions..."\n\
 php -m | grep pdo\n\
 php -m | grep pgsql\n\
+php -m | grep pdo_pgsql\n\
 \n\
 # Debug database connection parameters in detail\n\
 echo "Database connection parameters (detailed):"\n\
